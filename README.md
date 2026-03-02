@@ -2,7 +2,15 @@
 
 Skills that guide AI coding agents to help you build LLM evaluations.
 
-These skills assume familiarity with eval concepts. They complement the [AI Evals course](https://maven.com/parlance-labs/evals?promoCode=evals-info-url) by Hamel Husain and Shreya Shankar. If you're new to evals, see [questions.md](questions.md) for free resources on the fundamentals.
+These skills complement the [AI Evals course](https://maven.com/parlance-labs/evals?promoCode=evals-info-url) by Hamel Husain and Shreya Shankar. If you're new to evals, see [questions.md](questions.md) for free resources on the fundamentals.
+
+## New to Evals? Start Here
+
+If you're unsure whether your eval pipeline is working or you don't have one yet, start with the `eval-audit` skill. Point your agent at this repo and tell it to audit your pipeline:
+
+> Install the eval skills plugin from hamelsmu/evals-skills, then run /evals-skills:eval-audit on my eval pipeline. Investigate each diagnostic area using a separate subagent in parallel, then synthesize the findings into a single report. Use other skills in the plugin as recommended by the audit.
+
+The agent will check for common problems (missing error analysis, unvalidated judges, vanity metrics, bad labeling practices) and tell you what to fix first. Each finding links to the specific skill or article that addresses it.
 
 ## Installation
 
@@ -30,6 +38,7 @@ To upgrade:
 
 | Skill | What it does |
 |-------|-------------|
+| eval-audit | Audit an eval pipeline and surface problems with prioritized fixes |
 | error-analysis | Guide the user through reading traces and categorizing failures |
 | generate-synthetic-data | Create diverse synthetic test inputs using dimension-based tuple generation |
 | write-judge-prompt | Design LLM-as-Judge evaluators for subjective quality criteria |

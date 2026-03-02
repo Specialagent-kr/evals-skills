@@ -1,7 +1,7 @@
 {
   "name": "evals-skills",
-  "version": "0.1.0",
-  "description": "Skills for building LLM evaluations: error analysis, synthetic data generation, LLM-as-Judge design, evaluator validation, RAG evaluation, and annotation interfaces.",
+  "version": "0.2.0",
+  "description": "Skills for building LLM evaluations: pipeline audit, error analysis, synthetic data generation, LLM-as-Judge design, evaluator validation, RAG evaluation, and annotation interfaces.",
   "author": {
     "name": "Hamel Husain",
     "url": "https://hamel.dev"

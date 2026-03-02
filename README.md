@@ -6,11 +6,11 @@ These skills complement the [AI Evals course](https://maven.com/parlance-labs/ev
 
 ## New to Evals? Start Here
 
-If you're unsure whether your eval pipeline is working or you don't have one yet, start with the `eval-audit` skill. Point your agent at this repo and tell it to audit your pipeline:
+If you are new to evals or aren't a student in our course, start with the `eval-audit` skill. Give your coding agent these instructions:
 
-> Install the eval skills plugin from hamelsmu/evals-skills, then run /evals-skills:eval-audit on my eval pipeline. Investigate each diagnostic area using a separate subagent in parallel, then synthesize the findings into a single report. Use other skills in the plugin as recommended by the audit.
+> Install the eval skills plugin from https://github.com/hamelsmu/evals-skills, then run /evals-skills:eval-audit on my eval pipeline. Investigate each diagnostic area using a separate subagent in parallel, then synthesize the findings into a single report. Use other skills in the plugin as recommended by the audit.
 
-The agent will check for common problems (missing error analysis, unvalidated judges, vanity metrics, bad labeling practices) and tell you what to fix first. Each finding links to the specific skill or article that addresses it.
+The audit isn't a complete solution, but it will catch common problems we've seen in evals. It will also recommend other skills to use to fix the problems.
 
 ## Installation
 
@@ -56,4 +56,4 @@ The [meta-skill](meta-skill.md) can help you ground custom skills. It works best
 
 ## Beyond These Skills
 
-These skills handle the parts of eval work that generalize across projects. Much of the process doesn't: production monitoring, CI/CD integration, data analysis and more. The [course](https://maven.com/parlance-labs/evals?promoCode=evals-info-url) covers all of it.
+These skills handle the parts of eval work that generalize across projects. Much of the process doesn't: production monitoring, CI/CD integration, data analysis, and much more. The [course](https://maven.com/parlance-labs/evals?promoCode=evals-info-url) covers all of it.

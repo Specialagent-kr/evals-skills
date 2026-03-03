@@ -48,7 +48,7 @@ Invoke a skill with `/evals-skills:skill-name`, e.g., `/evals-skills:error-analy
 
 ## Write Your Own Skills
 
-These skills are a starting point. You'll get better results writing skills that encode your own workflows, domain knowledge, and constraints. Skills grounded in your own data will vastly outperform these generic skills. Start here, then iterate toward custom skills.
+These skills are a starting point and only encode common mistakes that generalize across projects. Skills grounded in your stack, your domain, and your data will outperform them. Start here, then write your own.
 
 The [meta-skill](meta-skill.md) can help you ground custom skills. It works best alongside the context provided in the course.
 

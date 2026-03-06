@@ -1,164 +1,168 @@
 ---
 name: error-analysis
 description: >
-  Help the user systematically identify and categorize failure modes in an LLM
-  pipeline by reading traces. Use when starting a new eval project, after
-  significant pipeline changes (new features, model switches, prompt rewrites),
-  when production metrics drop, or after incidents.
+  LLM 파이프라인의 트레이스를 읽고 실패 모드(failure modes)를 체계적으로 식별 및 분류할 수 있도록 사용자를 돕습니다. 새로운 평가 프로젝트를 시작할 때, 파이프라인에 중대한 변경(새 기능, 모델 교체, 프롬프트 재작성)이 있을 때, 프로덕션 지표가 떨어졌을 때, 또는 장애 발생 후에 사용하세요.
 ---
 
-# Error Analysis
+# 오류 분석 (Error Analysis)
 
-Guide the user through reading LLM pipeline traces and building a catalog of how the system fails.
+LLM 파이프라인 트레이스를 읽고 시스템이 실패하는 방식에 대한 카탈로그를 구축하도록 사용자를 안내합니다.
 
-## Overview
+## 개요
 
-1. Collect ~100 representative traces
-2. Read each trace, judge pass/fail, and note what went wrong
-3. Group similar failures into categories
-4. Label every trace against those categories
-5. Compute failure rates to prioritize what to fix
+1. 대표적인 트레이스 약 100개 수집
+2. 각 트레이스를 읽고 합격/불합격(Pass/Fail) 판단 및 구체적인 문제점 기록
+3. 유사한 실패 사례들을 카테고리로 그룹화
+4. 모든 트레이스에 대해 해당 카테고리별로 라벨링 수행
+5. 실패율을 계산하여 해결 우선순위 결정
 
-## Core Process
+## 핵심 프로세스
 
-### Step 1: Collect Traces
+### 1단계: 트레이스 수집
 
-Capture the full trace: input, all intermediate LLM calls, tool uses, retrieved documents, reasoning steps, and final output.
+전체 트레이스를 캡처하세요: 입력값, 모든 중간 LLM 호출, 도구 사용, 검색된 문서, 추론 단계, 그리고 최종 출력물.
 
-**Target: ~100 traces.** This is roughly where new traces stop revealing new kinds of failures. The number depends on system complexity.
+**목표: 약 100개의 트레이스.** 이 정도 수집하면 보통 새로운 종류의 실패가 더 이상 나타나지 않습니다. 시스템의 복잡도에 따라 개수는 달라질 수 있습니다.
 
-**From real user data (preferred):**
-- Small volume: random sample
-- Large volume: sample across key dimensions (query type, user segment, feature area)
-- Use embedding clustering (K-means) to ensure diversity
+**실제 사용자 데이터 활용 (권장):**
 
-**From synthetic data (when real data is sparse):**
-- Use the generate-synthetic-data skill
-- Run synthetic queries through the full pipeline and capture complete traces
+- 적은 양: 무작위 샘플링(Random sample)
+- 많은 양: 주요 차원(쿼리 유형, 사용자 세그먼트, 기능 영역)별 샘플링
+- 임베딩 클러스터링(K-means)을 사용하여 다양성 확보
 
-### Step 2: Read Traces and Take Notes
+**합성 데이터 활용 (실제 데이터가 부족할 때):**
 
-Present each trace to the user. For each one, ask: **did the system produce a good result?** Pass or Fail.
+- `generate-synthetic-data` 스킬 사용
+- 합성 쿼리를 전체 파이프라인에 실행하고 전체 트레이스 캡처
 
-For failures, note what went wrong. Focus on the **first thing that went wrong** in the trace — errors cascade, so downstream symptoms disappear when the root cause is fixed. Don't chase every issue in a single trace.
+### 2단계: 트레이스 읽기 및 기록
 
-Write observations, not explanations. "SQL missed the budget constraint" not "The model probably didn't understand the budget."
+사용자에게 각 트레이스를 제시하고 질문하세요: **시스템이 좋은 결과를 만들어냈나요?** (Pass or Fail)
 
-**Template:**
+실패한 경우, 무엇이 잘못되었는지 기록하세요. 트레이스에서 **가장 먼저 잘못된 부분**에 집중하세요. 오류는 연쇄적으로 발생하므로(Cascade), 근본 원인이 해결되면 하위 증상들은 사라집니다. 한 트레이스 내의 모든 개별 이슈를 다 쫓아다니지 마세요.
 
-```
-| Trace ID | Trace | What went wrong | Pass/Fail |
+추측성 설명이 아닌 관찰된 사실을 적으세요. "모델이 예산을 이해하지 못한 것 같다"가 아니라 "SQL에서 예산 제약 조건이 누락됨"이라고 적으세요.
+
+**템플릿:**
+
+| 트레이스 ID | 트레이스 내용 | 무엇이 잘못되었나 | 합격/불합격 |
 |----------|-------|-----------------|-----------|
-| 001      | [full trace] | Missing filter: pet-friendly requirement ignored in SQL | Fail |
-| 002      | [full trace] | Proposed unavailable times despite calendar conflicts | Fail |
-| 003      | [full trace] | Used casual tone for luxury client; wrong property type | Fail |
-| 004      | [full trace] | - | Pass |
+| 001      | [전체 내용] | 필터 누락: SQL에서 반려동물 동반 가능 조건이 무시됨 | Fail |
+| 002      | [전체 내용] | 캘린더 충돌에도 불구하고 불가능한 시간 제안 | Fail |
+| 003      | [전체 내용] | 럭셔리 고객에게 격식 없는 톤 사용; 잘못된 매물 유형 | Fail |
+| 004      | [전체 내용] | - | Pass |
+
+**휴리스틱(Heuristics):**
+
+- 미리 정의된 실패 목록으로 시작하지 마세요. 사용자가 실제로 보는 내용에서 카테고리가 자연스럽게 도출되게 하세요.
+- 사용자가 무엇이 잘못되었는지 설명하는 데 어려움을 느낀다면, 흔히 발생하는 실패 유형들을 제시해 보세요: 사실 왜곡(Fabrication), 잘못된 형식의 출력물, 사용자 요구사항 무시, 부적절한 말투, 도구 오용 등.
+
+### 3단계: 실패 사례 카테고리화
+
+30~50개의 트레이스를 검토한 후, 유사한 기록들을 카테고리로 묶기 시작하세요. 100개를 다 할 때까지 기다리지 마세요. 일찍 그룹화하면 나머지 트레이스에서 무엇을 중점적으로 봐야 할지 명확해집니다. 카테고리는 계속 진화할 것입니다. 목표는 완벽한 이름이 아니라, 구체적이고 실행 가능한(Actionable) 이름을 짓는 것입니다.
+
+1. 모든 실패 기록을 읽어봅니다.
+2. 유사한 것끼리 그룹으로 묶습니다.
+3. 겉보기엔 비슷하지만 근본 원인이 다른 것은 분리합니다.
+4. 각 카테고리에 명확한 이름과 한 문장으로 된 정의를 부여합니다.
+
+**분리 vs. 그룹화 기준:**
+
+다음은 분리하세요 (근본 원인이 다름):
+
+- "매물 특징 왜곡(태양광 패널)" vs. "고객 행동 왜곡(요청하지 않은 투어 예약)" — 하나는 외부 사실을 꾸며낸 것이고, 다른 하나는 사용자의 의도를 꾸며낸 것입니다.
+
+다음은 그룹화하세요 (근본 원인이 같음):
+
+- "침실 개수 필터 누락" + "반려동물 동반 필터 누락" + "가격대 필터 누락" → **쿼리 제약 조건 누락 (Missing Query Constraints)**
+
+**LLM을 활용한 클러스터링** (사용자가 30~50개의 트레이스를 직접 검토한 후에만 사용):
+
+```
+여기에 LLM 파이프라인 트레이스를 검토한 결과 어노테이션들이 있습니다.
+유사한 실패 사례들을 5~10개의 고유한 카테고리로 그룹화해 주세요.
+각 카테고리에 대해 다음을 제공하세요:
+- 명확한 이름
+- 한 문장 정의
+- 해당 카테고리에 속하는 어노테이션 목록
+
+어노테이션:
+[어노테이션 내용 붙여넣기]
 ```
 
-**Heuristics:**
-- Do NOT start with a pre-defined failure list. Let categories emerge from what the user actually sees.
-- If the user is stuck articulating what feels wrong, prompt with common failure types: made-up facts, malformed output, ignored user requirements, wrong tone, tool misuse.
+LLM이 제안한 그룹화는 항상 사용자와 함께 검토하세요. LLM은 표면적인 유사성으로 묶는 경향이 있습니다 (예: "앱 중단"과 "로그인 느림" 모두 '로그인'이 언급되었다는 이유로 묶음).
 
-### Step 3: Group Failures into Categories
+다음 특성을 가진 **5~10개의 카테고리**를 목표로 하세요:
 
-After reviewing 30-50 traces, start grouping similar notes into categories. Don't wait until all 100 are done — grouping early helps sharpen what to look for in the remaining traces. The categories will evolve. The goal is names that are specific and actionable, not perfect.
+- 상호 배타적 (각 실패는 하나의 카테고리에만 속함)
+- 다른 사람도 일관되게 적용할 수 있을 정도로 명확함
+- 실행 가능함 (각 카테고리가 구체적인 해결책을 가리킴)
 
-1. Read through all the failure notes
-2. Group similar ones together
-3. Split notes that look alike but have different root causes
-4. Give each category a clear name and one-sentence definition
+### 4단계: 모든 트레이스 라벨링
 
-**When to split vs. group:**
+모든 트레이스로 돌아가 각 실패 카테고리에 대해 이진 라벨(Pass/Fail)을 적용합니다. 각 트레이스는 카테고리별로 하나의 열을 갖게 됩니다. 사용자가 선호하는 도구(스프레드시트, 어노테이션 앱(build-review-interface 참조), 간단한 스크립트 등)를 사용하세요.
 
-Split these (different root causes):
-- "Made up property features (solar panels)" vs. "Made up client activity (scheduled a tour never requested)" — one fabricates external facts, the other fabricates user intent.
-
-Group these (same root cause):
-- "Missing bedroom count filter" + "Missing pet-friendly filter" + "Missing price range filter" → **Missing Query Constraints**
-
-**LLM-assisted clustering** (use only after the user has reviewed 30-50 traces):
-
-```
-Here are failure annotations from reviewing LLM pipeline traces.
-Group similar failures into 5-10 distinct categories.
-For each category, provide:
-- A clear name
-- A one-sentence definition
-- Which annotations belong to it
-
-Annotations:
-[paste annotations]
-```
-
-Always review LLM-suggested groupings with the user. LLMs cluster by surface similarity (e.g., grouping "app crashes" and "login is slow" because both mention login).
-
-**Aim for 5-10 categories** that are:
-- Distinct (each failure belongs to one category)
-- Clear enough that someone else could apply them consistently
-- Actionable (each points toward a specific fix)
-
-### Step 4: Label Every Trace
-
-Go back through all traces and apply binary labels (pass/fail) for each failure category. Each trace gets a column per category. Use whatever tool the user prefers — spreadsheet, annotation app (see build-review-interface), or a simple script.
-
-### Step 5: Compute Failure Rates
+### 5단계: 실패율 계산
 
 ```python
 failure_rates = labeled_df[failure_columns].sum() / len(labeled_df)
 failure_rates.sort_values(ascending=False)
 ```
 
-The most frequent failure category is where to focus first.
+가장 빈번하게 발생하는 실패 카테고리에 먼저 집중해야 합니다.
 
-### Step 6: Decide What to Do About Each Failure
+### 6단계: 각 실패에 대한 대응 결정
 
-Work through each category with the user in this order:
+다음 순서에 따라 각 카테고리를 사용자 단계별로 검토하세요:
 
-**Can we just fix it?** Many failures have obvious fixes that don't need an evaluator at all:
-- The prompt never mentioned the requirement. Example: the LLM never includes photo links in emails because the prompt never asked for them. Add the instruction.
-- A tool is missing or misconfigured. Example: the user wants to reschedule but there's no rescheduling tool exposed to the LLM. Add the tool.
-- An engineering bug in retrieval, parsing, or integration. Fix the code.
+**즉시 수정할 수 있는가?** 많은 실패 사례는 평가기(Evaluator)가 전혀 필요 없는 명백한 해결책을 가지고 있습니다:
 
-If a clear fix resolves the failure, do that first. Only consider an evaluator for failures that persist after fixing.
+- 프롬프트에 요구사항이 빠진 경우. 예: 프롬프트에서 요청하지 않았기 때문에 LLM이 이메일에 사진 링크를 절대 포함하지 않음. 지침을 추가하세요.
+- 도구가 누락되었거나 설정이 잘못된 경우. 예: 사용자는 일정을 변경하고 싶어 하지만 LLM에게 노출된 일정 변경 도구가 없음. 도구를 추가하세요.
+- 검색(Retrieval), 파싱(Parsing), 또는 연동 과정의 엔지니어링 버그. 코드를 수정하세요.
 
-**Is an evaluator worth the effort?** Not every remaining failure needs one. Building and maintaining evaluators has real cost. Ask the user:
-- Does this failure happen frequently enough to matter?
-- What's the business impact when it does happen? A rare failure that causes revenue loss may outrank a frequent failure that's merely annoying.
-- Will this evaluator actually get used to iterate on the system, or is it checkbox work?
+명확한 해결책이 있다면 그것을 먼저 실행하세요. 수정 후에도 지속되는 실패 사례에 대해서만 평가기 도입을 고려하세요.
 
-Reserve evaluators for failures the user will iterate on repeatedly. Start with the highest-frequency, highest-impact category.
+**평가기를 만들 가치가 있는가?** 남은 모든 실패에 평가기가 필요한 것은 아닙니다. 평가기를 구축하고 유지하는 데는 상당한 비용이 듭니다. 사용자에게 확인하세요:
 
-**For failures that warrant an evaluator:** prefer code-based checks (regex, parsing, schema validation) for anything objective. Use write-judge-prompt only for failures that require judgment. Critical requirements (safety, compliance) may warrant an evaluator even after fixing the prompt, as a guardrail.
+- 이 실패가 무시해도 될 정도로 드물게 발생하는가?
+- 실패가 발생했을 때 비즈니스 영향도는 어떠한가? 드물지만 수익 손실을 초래하는 실패가, 자주 발생하지만 단순히 조금 짜증 나는 실패보다 중요할 수 있습니다.
+- 이 평가기가 실제로 시스템을 개선하는 데 지속적으로 사용될 것인가, 아니면 단순히 체크리스트를 채우기 위한 작업인가?
 
-### Step 7: Iterate
+반복적으로 개선 작업이 필요한 실패 사례에 대해서만 평가기를 만드세요. 가장 빈도가 높고 영향력이 큰 카테고리부터 시작하세요.
 
-Expect 2-3 rounds of reviewing and refining categories. After each round:
-- Merge categories that overlap
-- Split categories that are too broad
-- Clarify definitions where the user would hesitate
-- Re-label traces with the refined categories
+**평가기가 필요한 실패 사례:** 객관적인 항목에는 코드 기반 검토(정규표현식, 파싱, 스키마 유효성 검사 등)를 선호하세요. 판단이 필요한 실패 사례에 대해서만 `write-judge-prompt`를 사용하세요. 보안이나 규정 준수 같은 핵심 요구사항은 프롬프트를 수정했더라도 안전 장치(Guardrail)로서 평가기가 필요할 수 있습니다.
 
-## Stopping Criteria
+### 7단계: 반복
 
-Stop reviewing when new traces aren't revealing new kinds of failures. Roughly: ~100 traces reviewed with no new failure types appearing in the last 20. The exact number depends on system complexity.
+카테고리를 검토하고 정교하게 다듬는 과정을 2~3회 반복할 것을 예상하세요. 매 라운드 후에 다음을 수행합니다:
 
-## Trace Sampling Strategies
+- 겹치는 카테고리 병합
+- 너무 광범위한 카테고리 세분화
+- 사용자가 판단하기 애매해하는 정의들 구체화
+- 정제된 카테고리로 트레이스 재라벨링
 
-When production volume is high, use a mix:
+## 종료 조건
 
-| Strategy | When to Use | Method |
+새로운 트레이스를 봐도 더 이상 새로운 종류의 실패가 나타나지 않을 때 검토를 중단하세요. 대략적으로 100개의 트레이스를 검토했는데 최근 20개에서 새로운 실패 유형이 발견되지 않았다면 충분합니다. 정확한 숫자는 시스템 복잡도에 따라 다릅니다.
+
+## 트레이스 샘플링 전략
+
+프로덕션 데이터 양이 많을 때는 다음 전략들을 섞어서 사용하세요:
+
+| 전략 | 사용 시기 | 방법 |
 |----------|------------|--------|
-| **Random** | Default starting point | Sample uniformly from recent traces |
-| **Outlier** | Surface unusual behavior | Sort by response length, latency, tool call count; review extremes |
-| **Failure-driven** | After guardrail violations or user complaints | Prioritize flagged traces |
-| **Uncertainty** | When automated judges exist | Focus on traces where judges disagree or have low confidence |
-| **Stratified** | Ensure coverage across user segments | Sample within each dimension |
+| **무작위 (Random)** | 기본 시작점 | 최근 트레이스에서 균등하게 샘플링 |
+| **이상치 (Outlier)** | 비정상적 행동 탐색 | 응답 길이, 지연 시간(Latency), 도구 호출 횟수순으로 정렬하여 극단적인 케이스 검토 |
+| **실패 기반 (Failure-driven)** | 가드레일 위반 또는 사용자 불만 발생 후 | 플래그가 지정된 트레이스에 우선순위 부여 |
+| **불확실성 (Uncertainty)** | 자동 평가기가 존재하는 경우 | 평가기들의 의견이 일치하지 않거나 확신도가 낮은 트레이스에 집중 |
+| **층화 (Stratified)** | 사용자 세그먼트 전반의 커버리지 확보 | 각 차원(Dimension)별로 샘플링 |
 
-## Anti-Patterns
+## 안티 패턴
 
-- **Brainstorming failure categories before reading traces.** Read first, categorize what you find.
-- **Starting with pre-defined categories.** A fixed list causes confirmation bias. Let categories emerge.
-- **Skipping the user for initial review.** The user must review the first 30-50 traces to ground categories in domain knowledge.
-- **Using generic scores as categories.** "Hallucination score," "helpfulness score," "coherence score" are not grounded in the application's actual failure modes.
-- **Building evaluators before fixing obvious problems.** Fix prompt gaps, missing tools, and engineering bugs first.
-- **Treating this as a one-time activity.** Re-run after every significant change: new features, prompt rewrites, model switches, production incidents.
+- **트레이스를 읽기도 전에 실패 카테고리 브레인스토밍하기.** 먼저 읽고, 발견한 내용을 바탕으로 분류하세요.
+- **미리 정의된 카테고리로 시작하기.** 고정된 목록은 확증 편향(Confirmation bias)을 일으킵니다. 카테고리가 자연스럽게 드러나게 하세요.
+- **초기 검토를 사용자 없이 진행하기.** 도메인 지식에 기반한 카테고리 설정을 위해 사용자가 초기 30~50개 트레이스를 직접 검토해야 합니다.
+- **막연한 점수를 카테고리로 사용하기.** "환각 점수", "유용성 점수", "일관성 점수" 등은 애플리케이션의 실제 실패 모드와 연결되지 않습니다.
+- **명백한 문제를 해결하기 전에 평가기부터 만들기.** 프롬프트 결함, 누락된 도구, 엔지니어링 버그를 먼저 수정하세요.
+- **이를 일회성 활동으로 치부하기.** 새로운 기능 추가, 프롬프트 재작성, 모델 교체, 프로덕션 장애 발생 후에는 다시 실행하세요.

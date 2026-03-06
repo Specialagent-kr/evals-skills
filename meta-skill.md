@@ -1,131 +1,134 @@
-# How to Write Good Skills
+# 좋은 스킬(Skill)을 작성하는 방법
 
-Guidelines for creating and maintaining skills in this directory. Follow these when writing new skills or revising existing ones.
+이 디렉토리에 스킬을 생성하고 유지 관리하기 위한 가이드라인입니다. 새로운 스킬을 작성하거나 기존 스킬을 수정할 때 이 규칙을 따르세요.
 
-## Who Reads Skills
+## 누가 스킬을 읽는가
 
-Skills are instructions for a **coding agent** (an AI assistant helping a user with a task). The agent is smart, has broad general knowledge, and doesn't need to be convinced or motivated. It needs domain-specific directives it wouldn't otherwise know. Some skills guide the agent to build an artifact (an app, a script). Others guide the agent to help the user through a process (error analysis, data labeling).
+스킬은 **코딩 에이전트**(사용자의 작업을 돕는 AI 어시스턴트)를 위한 지침입니다. 에이전트는 똑똑하고 폭넓은 일반 지식을 갖추고 있으며, 설득이나 동기 부여가 필요하지 않습니다. 대신 에이전트가 스스로 알기 어려운 도메인별 지시사항이 필요합니다. 어떤 스킬은 에이전트가 결과물(앱, 스크립트)을 만들도록 안내하고, 어떤 스킬은 사용자가 프로세스(오류 분석, 데이터 라벨링)를 수행하도록 돕습니다.
 
-## Writing Principles
+## 작성 원칙
 
-### Write directives, not wisdom
+### 지혜가 아닌 지침을 작성하세요
 
-The agent needs to be told what to do, not why.
+에이전트에게는 '왜'가 아니라 '무엇을 할지'를 알려줘야 합니다.
 
-Bad: "Do not force domain experts to read raw JSON. This is the single most common annotation bottleneck. Domain experts are not engineers."
+나쁜 예: "도메인 전문가가 가공되지 않은 JSON을 읽게 강요하지 마세요. 이는 어노테이션 단계에서 가장 흔한 병목 현상입니다. 도메인 전문가는 엔지니어가 아닙니다."
 
-Good: "Format all data in the most human-readable representation for the domain."
+좋은 예: "모든 데이터를 해당 도메인에서 인간이 가장 읽기 쉬운 형태로 포맷팅하세요."
 
-Bad: "It's worth noting that using ROUGE scores as primary evaluation metrics is problematic because they measure surface-level textual overlap..."
+나쁜 예: "표면적인 텍스트 중첩만 측정하기 때문에 ROUGE 점수를 주요 평가 지표로 사용하는 것은 문제가 있다는 점을 유의해야 합니다..."
 
-Good: "Use binary pass/fail evaluators grounded in specific failure modes. Do not use ROUGE, BERTScore, or cosine similarity as primary evaluation metrics."
+좋은 예: "특정 실패 모드에 기반한 이진(Pass/Fail) 평가기를 사용하세요. ROUGE, BERTScore 또는 코사인 유사도를 주요 평가 지표로 사용하지 마세요."
 
-### Cut general knowledge
+### 일반적인 지식은 삭제하세요
 
-Only include information the agent wouldn't already know. The agent knows what JSON is, how Python imports work, what a spreadsheet is, and what frameworks exist. It does not know your domain-specific eval methodology, the specific steps in your annotation workflow, or the formulas for bias correction.
+에이전트가 이미 알고 있을 법한 정보는 포함하지 마세요. 에이전트는 JSON이 무엇인지, 파이썬 임포트가 어떻게 작동하는지, 스프레드시트가 무엇인지, 어떤 프레임워크가 존재하는지 이미 알고 있습니다. 에이전트가 모르는 것은 여러분의 도메인 특화 평가 방법론, 어노테이션 워크플로우의 구체적인 단계, 또는 편향 보정을 위한 공식 등입니다.
 
-Cut:
-- What things are ("A trace is the complete record of...")
-- Why things matter ("Error analysis is the highest-ROI activity...")
-- Framework lists ("You can use FastHTML, Streamlit, Gradio, or...")
-- Motivation ("Spreadsheets fail because...")
-- Academic citations
+삭제할 내용:
 
-Keep:
-- Domain-specific procedures the agent wouldn't know
-- Templates with concrete examples
-- Formulas and thresholds
-- Anti-patterns specific to the domain
+- 개념 정의 ("트레이스란 ...의 완전한 기록입니다")
+- 중요성 강조 ("오류 분석은 투자 대비 효율(ROI)이 가장 높은 활동입니다...")
+- 프레임워크 목록 ("FastHTML, Streamlit, Gradio 등을 사용할 수 있습니다...")
+- 동기 부여 ("스프레드시트가 실패하는 이유는...")
+- 학술적 인용
 
-### Scope to the build task
+유지할 내용:
 
-If the skill is about building an annotation app, every sentence should help the agent build that app. Process advice ("schedule weekly review sessions"), organizational guidance ("assemble a team of 3-5 annotators"), and general project management ("budget 60-80% of development time for error analysis") belong elsewhere.
+- 에이전트가 모를 만한 도메인 특화 절차
+- 구체적인 예시가 포함된 템플릿
+- 공식 및 임계값(Threshold)
+- 해당 도메인에 특화된 안티 패턴(Anti-patterns)
 
-Ask: "Does this sentence help the agent do its job — build something or guide the user through the process?" If not, cut it.
+### 구축 작업에 집중하세요
 
-### Start with good defaults
+스킬이 어노테이션 앱 구축에 관한 것이라면, 모든 문장은 에이전트가 그 앱을 구축하는 데 도움이 되어야 합니다. 프로세스 조언("매주 리뷰 세션을 잡으세요"), 조직 가이드("3~5명의 어노테이터 팀을 구성하세요"), 일반적인 프로젝트 관리("개발 시간의 60~80%를 오류 분석에 할당하세요") 등은 다른 곳에 두어야 합니다.
 
-Present the simplest correct approach first. If an advanced technique requires something the user might not have yet, state the prerequisite explicitly.
+자문해 보세요: "이 문장이 에이전트가 자신의 업무(무언가를 구축하거나 사용자를 가이드하는 것)를 수행하는 데 도움이 되는가?" 아니라면 삭제하세요.
 
-Bad: Listing random sampling, uncertainty sampling, and failure-driven sampling as equivalent options.
+### 좋은 기본값부터 시작하세요
 
-Good: "Start with a random sample. If you have automated evaluators, add uncertainty sampling (traces where evaluators disagree). If you have production monitoring, add failure-driven sampling (traces that triggered guardrails or user complaints)."
+가장 간단하면서도 올바른 접근 방식을 먼저 제시하세요. 고급 기술을 사용하기 위해 사용자가 아직 갖추지 못한 전제 조건이 필요하다면 이를 명확히 밝히세요.
 
-### Be concrete
+나쁜 예: 무작위 샘플링, 불확실성 샘플링, 실패 기반 샘플링을 동등한 옵션으로 나열하는 경우.
 
-Vague directives are useless. Show what good looks like.
+좋은 예: "무작위 샘플링으로 시작하세요. 자동 평가기가 있다면 불확실성 샘플링(평가기들의 의견이 일치하지 않는 트레이스)을 추가하세요. 프로덕션 모니터링이 있다면 실패 기반 샘플링(가드레일을 위반했거나 사용자 불만이 제기된 트레이스)을 추가하세요."
 
-Bad: "Write clear pass/fail criteria."
+### 구체적으로 작성하세요
 
-Good:
+모호한 지침은 쓸모가 없습니다. '좋은' 모습이 어떤 것인지 보여주세요.
+
+나쁜 예: "명확한 이진(Pass/Fail) 기준을 작성하세요."
+
+좋은 예:
+
 ```
-Pass: The email addresses the client by name and references
-at least one property from their saved search.
-Fail: The email uses a generic greeting ("Dear customer") or
-mentions no properties from the client's saved search.
+Pass: 이메일에서 고객의 이름을 부르고, 저장된 검색 조건 중 최소 하나 이상의 속성을 언급함.
+Fail: 이메일에서 일반적인 인사말("고객님께")을 사용하거나, 고객의 검색 조건에 맞는 속성을 전혀 언급하지 않음.
 ```
 
-### Convert warnings into directives or anti-patterns
+### 경고를 지침이나 안티 패턴으로 변환하세요
 
-Instead of a "What NOT to Do" section full of wisdom-style warnings with paragraph explanations, use one of two approaches:
+단락 설명이 포함된 "하지 말아야 할 일" 섹션 대신 다음 두 가지 방법 중 하나를 사용하세요.
 
-**Integrate as directives** in the main instructions:
-- "Use binary labels, not Likert scales" (in the feedback collection section)
-- "Show the full trace, not just the final output" (in the data display section)
+**주요 지침에 통합**:
 
-**List as concise anti-patterns** at the end:
-- Using ROUGE or cosine similarity as primary evaluation metrics
-- Building evaluators for failures you haven't observed in traces
-- Rating outputs on a 1-5 scale instead of binary pass/fail
+- "리커트 척도(Likert scale)가 아닌 이진 라벨을 사용하세요" (피드백 수집 섹션)
+- "최종 출력뿐만 아니라 전체 트레이스를 보여주세요" (데이터 표시 섹션)
 
-Anti-patterns should be one line each. If it takes a paragraph to explain, it's wisdom — convert it to a directive and put it in the main instructions.
+**끝부분에 간결한 안티 패턴 목록 추가**:
 
-### No quotes or citations
+- ROUGE 또는 코사인 유사도를 주요 평가 지표로 사용함
+- 트레이스에서 관찰하지 못한 실패에 대해 평가기를 구축함
+- 출력을 이진(Pass/Fail) 대신 1~5점 척도로 평가함
 
-The skill is not a textbook. Remove instructor quotes, paper references, and "according to..." framing. If the information is correct, state it directly.
+안티 패턴은 한 줄씩 작성해야 합니다. 설명하는 데 한 단락이 필요하다면 그것은 '지혜'에 가깝습니다. 지침으로 변환하여 주요 지침 섹션에 넣으세요.
 
-## Skill Structure
+### 인용구나 참조 생략
+
+스킬은 교과서가 아닙니다. 강사의 인용구, 논문 참조, "...에 따르면"과 같은 표현을 제거하세요. 정보가 정확하다면 직접적으로 서술하세요.
+
+## 스킬 구조
 
 ```yaml
 ---
 name: skill-name
 description: >
-  What this skill does. Use when [triggers]. Do NOT use when [exclusions].
+  이 스킬의 기능. [트리거]일 때 사용하세요. [제외 사항]일 때는 사용하지 마세요.
 ---
 ```
 
 ```markdown
-# Skill Title
+# 스킬 제목
 
-One-line summary of what the agent will build or do.
+에이전트가 구축하거나 수행할 작업에 대한 한 줄 요약.
 
-## Overview
-[High-level summary of the procedure]
+## 개요
+[절차에 대한 상위 수준의 요약]
 
-## Prerequisites
-[What must exist before using this skill — only if applicable]
+## 전제 조건
+[이 스킬을 사용하기 전에 존재해야 하는 것 — 해당하는 경우에만]
 
-## Core Instructions
-[The actual directives, organized by topic]
+## 핵심 지침
+[주제별로 정리된 실제 지침]
 
-## Anti-Patterns
-[Concise list of domain-specific mistakes — one line each]
+## 안티 패턴
+[도메인 특화된 실수들에 대한 간결한 목록 — 한 줄씩]
 ```
 
-Sections are flexible. Use what fits the skill. Not every skill needs Prerequisites or Anti-Patterns. The only required elements are the YAML frontmatter, an Overview, and the core directives.
+섹션은 유연하게 조정할 수 있습니다. 스킬에 맞는 것을 사용하세요. 모든 스킬에 전제 조건이나 안티 패턴이 필요하지는 않습니다. 필수 요소는 YAML 프런트매터(Frontmatter), 개요, 핵심 지침뿐입니다.
 
-### Keep files under 500 lines.
+### 파일 길이를 500줄 이하로 유지하세요
 
-If a skill exceeds this, split reference material into separate files one level deep. Do not nest references (skill.md -> ref.md -> detail.md).
+스킬이 이 길이를 초과하면 참조 자료를 한 단계 깊은 별도 파일로 분리하세요. 참조를 중첩하지 마세요 (skill.md -> ref.md -> detail.md).
 
-## Naming
+## 명명 규칙
 
-- Lowercase with hyphens: `write-judge-prompt`, `error-analysis`
-- Action-oriented: describes what the agent will do
-- Specific: `validate-evaluator` not `evaluation-helpers`
+- 소문자와 하이픈 사용: `write-judge-prompt`, `error-analysis`
+- 행동 중심: 에이전트가 수행할 작업을 설명
+- 구체적: `evaluation-helpers`가 아닌 `validate-evaluator` 등
 
-## Testing Skills
+## 스킬 테스트
 
-After writing or revising a skill, test it by using it with a fresh agent instance on a realistic task. The author knows too much context.
+스킬을 작성하거나 수정한 후에는 실제 작업에 대해 새로운 에이전트 인스턴스로 테스트해 보세요. 작성자는 문맥을 너무 많이 알고 있을 수 있습니다.
 
-For skills that produce a UI or application, include a testing section that instructs the agent to verify its work with Playwright (screenshots for visual review, scripted interactions for functional testing).
+UI나 애플리케이션을 생성하는 스킬의 경우, 에이전트가 Playwright를 사용하여 작업을 검증하도록 지시하는 테스트 섹션을 포함하세요 (시각적 검토를 위한 스크린샷, 기능 테스트를 위한 스크립트 기반 상호작용).

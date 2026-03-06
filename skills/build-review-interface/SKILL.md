@@ -1,96 +1,96 @@
 ---
 name: build-review-interface
 description: >
-  Build a custom browser-based annotation interface tailored to your data for
-  reviewing LLM traces and collecting structured feedback. Use when you need to
-  build an annotation tool, review traces, or collect human labels.
+  LLM 트레이스를 검토하고 구조화된 피드백을 수집하기 위해 사용자의 데이터에 맞춘 브라우저 기반의 맞춤형 어노테이션 인터페이스를 구축합니다. 어노테이션 도구가 필요하거나, 트레이스를 검토하거나, 사람이 직접 라벨링해야 할 때 사용하세요.
 ---
 
-# Build a Custom Annotation Interface
+# 맞춤형 어노테이션 인터페이스 구축
 
-## Overview
+## 개요
 
-Build an HTML page that loads traces from a data source (JSON/CSV file), displays one trace at a time with Pass/Fail buttons, a free-text notes field, and Next/Previous navigation. Save labels to a local file (CSV/SQLite/JSON). Then customize to the domain using the guidelines below.
+데이터 소스(JSON/CSV 파일)에서 트레이스를 불러와 한 번에 하나씩 표시하는 HTML 페이지를 구축합니다. 이 페이지에는 합격/불합격(Pass/Fail) 버튼, 자유 서식의 메모 필드, 그리고 이전/다음 탐색 기능이 포함되어야 합니다. 라벨은 로컬 파일(CSV/SQLite/JSON)에 저장하세요. 그 후 아래 가이드라인에 따라 도메인에 맞게 커스터마이징합니다.
 
-## Data Display
+## 데이터 표시
 
-Format all data in the most human-readable representation for the domain. Emails should look like emails. Code should have syntax highlighting. Markdown should be rendered. Tables should be tables. JSON should be pretty-printed and collapsible.
+모든 데이터를 해당 도메인에서 사람이 가장 읽기 쉬운 형태로 포맷팅하세요. 이메일은 이메일처럼 보여야 하고, 코드는 구문 강조(Syntax highlighting)가 되어야 하며, 마크다운은 렌더링되어야 합니다. 표는 표 형태로, JSON은 예쁘게 출력(Pretty-print)되고 접을 수 있어야 합니다.
 
-- **Collapse repetitive elements.** If every trace shares the same system prompt, put it in a `<details>` toggle.
-- **Extract and surface key metadata.** If traces contain a property name, client type, or session ID buried in the data, extract it and display it prominently as a header or badge.
-- **Color-code by role or status.** Use left-border colors to distinguish user messages, assistant messages, tool calls, and system prompts at a glance.
-- **Group related elements visually.** Tool calls and their responses should be visually linked (indentation, shared border).
-- **Collapse what doesn't help judgment.** Verbose tool response JSON, intermediate reasoning steps, and debugging context go behind toggles.
-- **Highlight what matters most.** Make the primary content reviewers judge visually dominant. Bold key entities (prices, dates, names). Use font size and spacing to create hierarchy.
-- **Show the full trace.** Include all intermediate steps (tool calls, retrieved context, reasoning), not just the final output. Collapse them by default but keep them accessible.
-- **Sanitize rendered content.** Strip raw HTML from LLM outputs before rendering. Disable images in rendered markdown if they could be tracking pixels.
+- **반복적인 요소는 접기.** 모든 트레이스가 동일한 시스템 프롬프트를 공유한다면 `<details>` 토글 안에 넣으세요.
+- **주요 메타데이터 추출 및 노출.** 트레이스 데이터 내부에 숨겨진 속성 이름, 고객 유형, 세션 ID 등이 있다면 이를 추출하여 헤더나 배지(Badge) 형태의 눈에 띄는 곳에 표시하세요.
+- **역할이나 상태에 따라 색상 코드 부여.** 왼쪽 테두리 색상을 사용하여 사용자 메시지, 어시스턴트 메시지, 도구 호출, 시스템 프롬프트를 한눈에 구분할 수 있게 하세요.
+- **관련 요소를 시각적으로 그룹화.** 도구 호출과 그에 대한 응답은 시각적으로 연결되어야 합니다 (들여쓰기, 공통 테두리 사용).
+- **판단에 도움이 되지 않는 내용은 접기.** 장황한 도구 응답 JSON, 중간 추론 단계, 디버깅 문맥 등은 토글 뒤로 숨기세요.
+- **가장 중요한 내용 강조.** 리뷰어가 판단해야 할 주요 콘텐츠가 시각적으로 도드라지게 만드세요. 주요 항목(가격, 날짜, 이름)은 굵게 표시하고, 폰트 크기와 간격을 활용해 계층 구조를 만드세요.
+- **전체 트레이스 표시.** 최종 출력뿐만 아니라 모든 중간 단계(도구 호출, 검색된 문맥, 추론 과정)를 포함하세요. 기본적으로는 접어두되 언제든 접근 가능하게 유지하세요.
+- **렌더링된 콘텐츠 정화(Sanitize).** LLM 출력물을 렌더링하기 전에 원시 HTML 태그를 제거하세요. 렌더링된 마크다운에서 추적 픽셀 역할을 할 수 있는 이미지는 비활성화하세요.
 
-## Feedback Collection
+## 피드백 수집
 
-Annotate at the trace level. The reviewer judges the whole trace, not individual spans.
+트레이스 단위로 어노테이션을 수행합니다. 리뷰어는 특정 부분이 아닌 전체 트레이스를 보고 판단합니다.
 
-- Binary Pass/Fail buttons as the primary action.
-- Free-text notes field for the reviewer to describe what went wrong (or right).
-- Defer button for uncertain cases.
-- Auto-save on every action.
+- 주요 동작으로 이진 합격/불합격(Pass/Fail) 버튼을 배치합니다.
+- 리뷰어가 무엇이 잘못되었는지(또는 잘되었는지) 적을 수 있는 자유 서식 메모 필드를 제공합니다.
+- 판단하기 모호한 경우를 위한 '보류(Defer)' 버튼을 만듭니다.
+- 모든 동작에 대해 자동 저장 기능을 구현합니다.
 
-Once you have established failure categories from error analysis, you can later add predefined failure mode tags as clickable checkboxes, dropdowns or picklists so reviewers can select from known categories in addition to writing notes.  But don't add these in the initial build.
+오류 분석을 통해 실패 카테고리가 정립되었다면, 나중에 클릭 가능한 체크박스, 드롭다운, 픽리스트 형태의 미리 정의된 실패 모드 태그를 추가할 수 있습니다. 이를 통해 리뷰어는 메모 작성 외에도 알려진 카테고리를 선택할 수 있게 됩니다. 하지만 초기 구축 단계에서는 이를 추가하지 마세요.
 
-## Navigation and Status
+## 탐색 및 상태
 
-- Next/Previous buttons and keyboard arrow keys.
-- Trace counter showing position and progress ("12 of 87 remaining").
-- Jump to specific trace by ID.
-- Counts of labeled vs unlabeled traces.
+- 다음/이전 버튼과 키보드 화살표 키 지원.
+- 위치와 진행 상황을 보여주는 트레이스 카운터 ("남은 87개 중 12번째").
+- ID를 사용하여 특정 트레이스로 바로 이동하는 기능.
+- 라벨링된 트레이스 대 라벨링되지 않은 트레이스의 개수 표시.
 
-## Keyboard Shortcuts
+## 키보드 단축키
 
 ```
-Arrow keys = Navigate traces
-1 = Pass              2 = Fail
-D = Defer             U = Undo last action
-Cmd+S = Save          Cmd+Enter = Save and next
+화살표 키 = 트레이스 탐색
+1 = 합격(Pass)          2 = 불합격(Fail)
+D = 보류(Defer)         U = 마지막 동작 실행 취소
+Cmd+S = 저장            Cmd+Enter = 저장 후 다음으로
 ```
 
-## Selecting Traces to Load
+## 불러올 트레이스 선택
 
-Build the app to accept traces from any source (JSON/CSV file). Keep sampling logic outside the app in a separate script. Start with random sampling.
+앱이 모든 소스(JSON/CSV 파일)에서 트레이스를 받아들일 수 있도록 구축하세요. 샘플링 로직은 앱 외부의 별도 스크립트로 분리하여 관리하세요. 시작은 무작위 샘플링(Random sampling)으로 하세요.
 
-## Additional Features
+## 추가 기능
 
-**Reference panel:** Toggle-able panel showing ground truth, expected answers, or rubric definitions alongside the trace.
+**참조 패널:** 트레이스와 함께 정답(Ground truth), 기대 응답, 또는 평가 루브릭 정의를 보여주는 토글 가능한 패널입니다.
 
-**Filtering:** Filter traces by metadata dimensions relevant to the product (channel, user type, pipeline version).
+**필터링:** 제품과 관련된 메타데이터 차원(채널, 사용자 유형, 파이프라인 버전 등)에 따라 트레이스를 필터링합니다.
 
-**Clustering:** Group traces by metadata or semantic similarity. Show representative traces per cluster with drill-down.
+**클러스터링:** 메타데이터나 의미론적 유사성에 따라 트레이스를 그룹화합니다. 클러스터당 대표 트레이스를 보여주고 상세 내용을 확인할 수 있게 합니다.
 
-## Design Checklist
+## 디자인 체크리스트
 
-- [ ] Same layout, controls, and terminology on every trace
-- [ ] Pass and Fail buttons are visually distinct (color, size)
-- [ ] Keyboard shortcuts work for all primary actions
-- [ ] Full trace accessible even when sections are collapsed
-- [ ] Labels persist automatically without explicit save
-- [ ] Trace-level annotation (not span-level) as the default
-- [ ] All data rendered in its native format (markdown as HTML, code with highlighting, JSON pretty-printed, tables as HTML tables, URLs as clickable links)
+- [ ] 모든 트레이스에서 동일한 레이아웃, 컨트롤, 용어 사용
+- [ ] 합격(Pass)과 불합격(Fail) 버튼이 시각적으로 명확히 구분됨 (색상, 크기)
+- [ ] 모든 주요 동작에 대해 키보드 단축키 작동
+- [ ] 섹션이 접혀 있어도 전체 트레이스에 접근 가능
+- [ ] 명시적인 저장 버튼 없이도 라벨링 결과가 자동으로 유지됨
+- [ ] 기본적으로 (특정 구간이 아닌) 트레이스 단위 어노테이션 수행
+- [ ] 모든 데이터가 고유한 형식으로 렌더링됨 (마크다운은 HTML로, 코드는 구문 강조, JSON은 예쁘게 출력, 표는 HTML 테이블로, URL은 클릭 가능한 링크로)
 
-## Testing
+## 테스트
 
-After building the interface, verify it with Playwright.
+인터페이스 구축 후 Playwright를 사용하여 검증하세요.
 
-**Visual review:** Take screenshots of the interface with representative trace data loaded. Review each screenshot for:
-- Layout and spacing: is the visual hierarchy clear? Can you immediately see what matters?
-- Readability: is all data rendered in its native format? Are there any raw JSON blobs, unrendered markdown, or unstyled content?
-- Aesthetics: does the interface look professional and clean? Would a domain expert use this?
-- Responsiveness: does the layout hold at different window sizes?
+**시각적 검토:** 대표적인 트레이스 데이터가 로드된 상태의 인터페이스 스크린샷을 찍습니다. 각 스크린샷에서 다음을 검토하세요:
 
-**Functional test:** Write a Playwright script that performs a full annotation workflow:
-1. Load the app and verify traces are displayed
-2. Click Pass on a trace, verify the label is saved
-3. Click Fail on a trace, add a note, verify both are saved
-4. Click Defer, verify it is recorded
-5. Navigate forward and backward with buttons and keyboard shortcuts
-6. Verify the trace counter updates correctly
-7. Verify auto-save by reloading the page and checking labels persist
-8. Expand collapsed sections (system prompts, tool calls) and verify content is accessible
-9. Test that all keyboard shortcuts trigger the correct actions
+- 레이아웃 및 간격: 시각적 계층 구조가 명확한가? 무엇이 중요한지 즉시 알 수 있는가?
+- 가독성: 모든 데이터가 고유 형식으로 렌더링되었는가? 가공되지 않은 JSON 덩어리, 렌더링되지 않은 마크다운, 스타일이 적용되지 않은 콘텐츠가 있는가?
+- 미학적 요소: 인터페이스가 전문적이고 깔끔해 보이는가? 도메인 전문가가 사용하기 적합한가?
+- 반응형 디자인: 다양한 창 크기에서도 레이아웃이 유지되는가?
+
+**기능 테스트:** 전체 어노테이션 워크플로우를 수행하는 Playwright 스크립트를 작성하세요:
+
+1. 앱을 로드하고 트레이스가 표시되는지 확인
+2. 트레이스에서 '합격'을 클릭하고 라벨이 저장되는지 확인
+3. 트레이스에서 '불합격'을 클릭하고 메모를 추가한 뒤, 둘 다 저장되는지 확인
+4. '보류'를 클릭하고 기록되는지 확인
+5. 버튼과 키보드 단축키로 앞뒤 탐색 수행
+6. 트레이스 카운터가 올바르게 업데이트되는지 확인
+7. 페이지를 새로고침하여 라벨이 유지되는지 확인(자동 저장 확인)
+8. 접힌 섹션(시스템 프롬프트, 도구 호출 등)을 펼쳐서 내용에 접근 가능한지 확인
+9. 모든 키보드 단축키가 올바른 동작을 트리거하는지 테스트

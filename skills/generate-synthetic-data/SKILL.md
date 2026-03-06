@@ -1,131 +1,126 @@
 ---
 name: generate-synthetic-data
 description: >
-  Create diverse synthetic test inputs for LLM pipeline evaluation using
-  dimension-based tuple generation. Use when bootstrapping an eval dataset,
-  when real user data is sparse, or when stress-testing specific failure
-  hypotheses. Do NOT use when you already have 100+ representative real
-  traces (use stratified sampling instead), or when the task is collecting
-  production logs.
+  차원 기반 Tuple 생성을 사용하여 LLM 파이프라인 평가를 위한 다양한 합성 테스트 입력 데이터를 생성합니다. 평가 데이터셋을 처음 구축할 때, 실제 사용자 데이터가 부족할 때, 또는 특정 실패 가설을 스트레스 테스트할 때 사용하세요. 이미 100개 이상의 대표적인 실제 트레이스가 있는 경우(대신 층화 샘플링 사용)나 작업 목표가 프로덕션 로그 수집인 경우에는 사용하지 마세요.
 ---
 
-# Generate Synthetic Data
+# 합성 데이터 생성 (Generate Synthetic Data)
 
-Generate diverse, realistic test inputs that cover the failure space of an LLM pipeline.
+LLM 파이프라인의 실패 가능 영역을 포괄하는 다양하고 현실적인 테스트 입력 데이터를 생성합니다.
 
-## Prerequisites
+## 전제 조건
 
-Before generating synthetic data, identify where the pipeline is likely to fail. Ask the user about known failure-prone areas, review existing user feedback, or form hypotheses from available traces. Dimensions (Step 1) must target anticipated failures, not arbitrary variation.
+합성 데이터를 생성하기 전에 파이프라인이 어디에서 실패할 가능성이 높은지 식별하세요. 사용자에게 알려진 실패 취약 영역에 대해 묻거나, 기존 사용자 피드백을 검토하거나, 사용 가능한 트레이스에서 가설을 세우세요. 생성될 데이터의 차원(1단계)은 임의의 변화가 아니라 예상되는 실패를 타겟팅해야 합니다.
 
-## Core Process
+## 핵심 프로세스
 
-### Step 1: Define Dimensions
+### 1단계: 차원(Dimensions) 정의
 
-Dimensions are axes of variation specific to your application. Choose dimensions based on where you expect failures.
-
-```
-Dimension 1: [Name] — [What it captures]
-  Values: [value_a, value_b, value_c, ...]
-
-Dimension 2: [Name] — [What it captures]
-  Values: [value_a, value_b, value_c, ...]
-
-Dimension 3: [Name] — [What it captures]
-  Values: [value_a, value_b, value_c, ...]
-```
-
-Example for a real estate assistant:
+차원은 여러분의 애플리케이션에 특화된 변화ของ 축입니다. 실패가 예상되는 지점을 바탕으로 차원을 선택하세요.
 
 ```
-Feature: what task the user wants
-  Values: [property search, scheduling, email drafting]
+차원 1: [이름] — [무엇을 캡처하는가]
+  값 목록: [값_a, 값_b, 값_c, ...]
 
-Client Persona: who the user serves
-  Values: [first-time buyer, investor, luxury buyer]
+차원 2: [이름] — [무엇을 캡처하는가]
+  값 목록: [값_a, 값_b, 값_c, ...]
 
-Scenario Type: query clarity
-  Values: [well-specified, ambiguous, out-of-scope]
+차원 3: [이름] — [무엇을 캡처하는가]
+  값 목록: [값_a, 값_b, 값_c, ...]
 ```
 
-Start with 3 dimensions. Add more only if initial traces reveal failure patterns along new axes.
-
-### Step 2: Draft 20 Tuples with the User
-
-A tuple is one combination of dimension values defining a specific test case. Present 20 draft tuples to the user and iterate until they confirm the tuples reflect realistic scenarios. The user's domain knowledge is essential here — they know which combinations actually occur and which are unrealistic.
+부동산 비서 서비스의 예:
 
 ```
-(Feature: Property Search, Persona: Investor, Scenario: Ambiguous)
-(Feature: Scheduling, Persona: First-time Buyer, Scenario: Well-specified)
-(Feature: Email Drafting, Persona: Luxury Buyer, Scenario: Out-of-scope)
+기능: 사용자가 원하는 작업
+  값 목록: [매물 검색, 일정 예약, 이메일 초안 작성]
+
+고객 페르소나: 서비스를 이용하는 주체
+  값 목록: [생애 첫 구매자, 투자자, 럭셔리 구매자]
+
+시나리오 유형: 쿼리의 명확성
+  값 목록: [상세히 기술됨, 모호함, 범위를 벗어남]
 ```
 
-### Step 3: Generate More Tuples with an LLM
+처음에는 3개의 차원으로 시작하세요. 초기 트레이스에서 새로운 축을 따라 실패 패턴이 발견되는 경우에만 차원을 추가하세요.
+
+### 2단계: 사용자와 함께 20개의 Tuples 초안 작성
+
+Tuple은 특정 테스트 케이스를 정의하는 차원 값들의 조합입니다. 20개의 Tuples 초안을 사용자에게 제시하고, 실제 시나리오를 잘 반영하고 있는지 확인받으며 수정하세요. 어떤 조합이 실제로 발생하고 어떤 것이 비현실적인지 가장 잘 아는 것은 사용자(도메인 전문가)이므로 이 단계는 필수적입니다.
 
 ```
-Generate 10 random combinations of ({dim1}, {dim2}, {dim3})
-for a {your application description}.
-
-The dimensions are:
-{dim1}: {description}. Possible values: {values}
-{dim2}: {description}. Possible values: {values}
-{dim3}: {description}. Possible values: {values}
-
-Output each tuple in the format: ({dim1}, {dim2}, {dim3})
-Avoid duplicates. Vary values across dimensions.
+(기능: 매물 검색, 페르소나: 투자자, 시나리오: 모호함)
+(기능: 일정 예약, 페르소나: 생애 첫 구매자, 시나리오: 상세히 기술됨)
+(기능: 이메일 초안 작성, 페르소나: 럭셔리 구매자, 시나리오: 범위를 벗어남)
 ```
 
-### Step 4: Convert Each Tuple to a Natural Language Query
-
-Use a separate prompt for this step. Single-step generation (tuples + queries together) produces repetitive phrasing.
+### 3단계: LLM을 사용하여 더 많은 Tuple 생성
 
 ```
-We are generating synthetic user queries for a {your application}.
-{Brief description of what it does.}
+{애플리케이션 설명}을 위한 ({차원1}, {차원2}, {차원3})의 무작위 조합 10개를 생성해줘.
 
-Given:
-{dim1}: {value}
-{dim2}: {value}
-{dim3}: {value}
+각 차원은 다음과 같아:
+{차원1}: {설명}. 가능한 값: {값 목록}
+{차원2}: {설명}. 가능한 값: {값 목록}
+{차원3}: {설명}. 가능한 값: {값 목록}
 
-Write a realistic query that a user might enter. The query should
-reflect the specified persona and scenario characteristics.
-
-Example: "{one of your hand-written examples}"
-
-Now generate a new query.
+각 Tuple을 ({차원1}, {차원2}, {차원3}) 형식으로 출력해줘.
+중복은 피하고, 각 차원의 값들이 골고루 섞이게 해줘.
 ```
 
-### Step 5: Filter for Quality
+### 4단계: 각 Tuple을 자연어 쿼리로 변환
 
-Review generated queries. Discard and regenerate when:
-- Phrasing is awkward or unrealistic
-- Content doesn't match the tuple's intent
-- Queries are too similar to each other
+이 단계에서는 별도의 프롬프트를 사용하세요. 한 번의 실행으로 Tuple과 쿼리를 동시에 생성하면 문구 표현이 반복되는 경향이 있습니다.
 
-Optional: use an LLM to rate realism on a 1-5 scale, discard below 3.
+```
+우리는 {애플리케이션 이름}을 위한 합성 사용자 쿼리를 생성하고 있어.
+{애플리케이션의 기능에 대한 짧은 설명}
 
-### Step 6: Run Queries Through the Pipeline
+주어진 조건:
+{차원1}: {값}
+{차원2}: {값}
+{차원3}: {값}
 
-Execute all queries through the full LLM pipeline. Capture complete traces: input, all intermediate steps, tool calls, retrieved docs, final output.
+사용자가 입력할 법한 현실적인 쿼리를 작성해줘. 쿼리는
+지정된 페르소나와 시나리오의 특징을 잘 반영해야 해.
 
-**Target: ~100 high-quality, diverse traces.** This is a rough heuristic for reaching saturation (where new traces stop revealing new failure categories). The number depends on system complexity.
+예시: "{직접 작성한 예시 중 하나}"
 
-## Sampling Real User Data
+이제 새로운 쿼리를 하나 생성해줘.
+```
 
-When you have real queries available, don't sample randomly. Use stratified sampling:
+### 5단계: 품질 필터링
 
-1. **Identify high-variance dimensions** — read through queries and find ways they differ (length, topic, complexity, presence of constraints).
-2. **Assign labels** — for small sets, with the user; for large sets, use K-means clustering on query embeddings.
-3. **Sample from each group** — ensures coverage across query types, not just the most common ones.
+생성된 쿼리들을 검토하세요. 다음과 같은 경우 폐기하고 다시 생성합니다:
 
-When both real and synthetic data are available, use synthetic data to fill gaps in underrepresented query types.
+- 문구가 어색하거나 비현실적임
+- 내용이 Tuple의 의도와 일치하지 않음
+- 쿼리들이 서로 너무 비슷함
 
-## Anti-Patterns
+선택 사항: LLM을 사용하여 현실성을 1~5점으로 평가하고 3점 미만은 폐기합니다.
 
-- **Unstructured generation.** Prompting "give me test queries" without the dimension/tuple structure produces generic, repetitive, happy-path examples.
-- **Single-step generation.** Generating tuples and queries in one prompt produces less diverse results than the two-step separation.
-- **Arbitrary dimensions.** Dimensions that don't target failure-prone regions waste test budget.
-- **Skipping user review of tuples.** Without the user validating tuples first, you can't judge whether LLM-generated tuples are realistic.
-- **Synthetic data when no one can judge realism.** If no one can judge whether a synthetic trace is realistic, use real data instead.
-- **Synthetic data for complex domain-specific content** (legal filings, medical records) where LLMs miss structural nuance.
-- **Synthetic data for low-resource languages or dialects** where LLM-generated samples are unrealistic.
+### 6단계: 파이프라인을 통해 쿼리 실행
+
+모든 쿼리를 전체 LLM 파이프라인에서 실행하세요. 전체 트레이스를 캡처합니다: 입력값, 모든 중간 단계, 도구 호출, 검색된 문서, 최종 출력물.
+
+**목표: 약 100개의 고품질 다방면 트레이스.** 이는 포화 상태(새로운 트레이스에서 새로운 실패 카테고리가 나타나지 않는 상태)에 도달하기 위한 대략적인 수치입니다. 시스템 복잡도에 따라 달라질 수 있습니다.
+
+## 실제 사용자 데이터 샘플링
+
+실제 데이터가 있는 경우 무작위로 샘플링하지 마세요. 층화 샘플링(Stratified sampling)을 사용하세요:
+
+1. **변동성이 큰 차원 식별** — 쿼리들을 읽어보며 서로 다른 점(길이, 주제, 복잡성, 제약 조건 유무 등)을 찾습니다.
+2. **라벨 부여** — 적은 양의 경우 사용자와 함께, 많은 양의 경우 쿼리 임베딩에 K-means 클러스터링을 사용하여 분류합니다.
+3. **각 그룹에서 샘플링** — 단순히 가장 흔한 유형뿐만 아니라 모든 유형의 쿼리가 골고루 포함되게 합니다.
+
+실제 데이터와 합성 데이터가 모두 있는 경우, 데이터가 부족한 유형을 채우는 용도로 합성 데이터를 사용하세요.
+
+## 안티 패턴
+
+- **구조화되지 않은 생성.** 차원/Tuple 구조 없이 단순히 "테스트 쿼리 예시를 줘"라고 요청하면 일반적이고 반복적인 '행복 경로(Happy-path)' 예시만 만들어집니다.
+- **단일 단계 생성.** Tuple과 쿼리를 한 프롬프트에서 생성하면 두 단계로 나누어 생성할 때보다 다양성이 떨어집니다.
+- **임의의 차원 선택.** 실패 취약 영역을 타겟팅하지 않는 차원은 테스트 비용을 낭비하게 합니다.
+- **Tuple에 대한 사용자 검토 건너뛰기.** 사용자가 먼저 Tuple을 검증하지 않으면 LLM이 생성한 Tuple이 현실적인지 판단할 수 없습니다.
+- **현실성을 판단할 사람이 없는 상태에서의 합성 데이터 활용.** 합성 트레이스가 현실적인지 판단할 수 있는 사람이 없다면 실제 데이터를 사용하세요.
+- **복잡한 도메인 특화 콘텐츠(법률 문서, 의료 기록 등)에 대한 합성 데이터 활용.** 구조적 뉘앙스를 LLM이 놓칠 수 있는 영역입니다.
+- **희귀 언어 또는 방언에 대한 합성 데이터 활용.** LLM이 생성한 샘플이 비현실적일 가능성이 높습니다.

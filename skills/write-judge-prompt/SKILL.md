@@ -1,144 +1,124 @@
 ---
 name: write-judge-prompt
 description: >
-  Design LLM-as-Judge evaluators for subjective criteria that code-based checks
-  cannot handle. Use when a failure mode requires interpretation (tone,
-  faithfulness, relevance, completeness). Do NOT use when the failure mode can be
-  checked with code (regex, schema validation, execution tests). Do NOT use when
-  you need to validate or calibrate the judge — use validate-evaluator instead.
+  코드 기반의 체크가 처리할 수 없는 주관적인 기준을 위해 LLM-평가(LLM-as-Judge) 평가기를 설계합니다. 말투(Tone), 성실성(Faithfulness), 관련성(Relevance), 완결성 등 해석이 필요한 실패 모드에 사용하세요. 코드(정규표현식, 스키마 유효성 검사, 실행 테스트 등)로 확인할 수 있는 실패 모드에는 사용하지 마세요. 평가를 검증하거나 보정해야 할 경우에는 사용하지 마세요 (대신 `validate-evaluator`를 사용하세요).
 ---
 
-# Write LLM-as-Judge Prompt
+# LLM-평가(LLM-as-Judge) 프롬프트 작성
 
-Design a binary Pass/Fail LLM-as-Judge evaluator for one specific failure mode. Each judge checks exactly one thing.
+하나의 구체적인 실패 모드에 대해 이진(Pass/Fail) LLM-평가 평가기를 설계합니다. 각 평가 기준은 정확히 한 가지만 확인합니다.
 
-## Prerequisites
+## 전제 조건
 
-- Error analysis is complete. The failure mode is identified.
-- You have human-labeled traces for this failure mode (at least 20 Pass and 20 Fail examples).
-- A code-based evaluator cannot check this failure mode. Exhaust code-based options before reaching for a judge — many failure modes that seem subjective reduce to keyword checks, regex, or API calls when you understand the domain. Example: detecting whether an AI interviewing coach suggests "general" questions (asking about typical behavior instead of a specific past event) seems to require semantic understanding, but in practice a keyword check for words like "usually," "typical," and "normally" could work quite well.
+- 오류 분석이 완료되어 실패 모드가 식별되었습니다.
+- 해당 실패 모드에 대해 사람의 라벨이 있는 트레이스가 있어야 합니다 (최소 합격 20개, 실패 20개).
+- 코드 기반의 평가기로는 이 실패 모드를 확인할 수 없습니다. 도메인을 깊이 이해하면 주관적으로 보이는 많은 실패 모드가 키워드 체크, 정규표현식, 또는 API 호출로 치환될 수 있습니다. 평가를 사용하기 전에 코드 기반 옵션을 모두 검토하세요. 예: AI 면접 코칭 서비스가 "일반적인" 질문(특정 과거 사건이 아닌 전형적인 행동에 대해 묻는 질문)을 하는지 감지하는 것은 의미론적 이해가 필요해 보이지만, 실제로는 "보통", "전형적으로", "일반적으로"와 같은 키워드를 체크하는 것만으로도 꽤 잘 작동할 수 있습니다.
 
-## The Four Components
+## 4가지 필수 구성 요소
 
-Every judge prompt requires exactly four components:
+모든 평가 프롬프트에는 다음 4가지 요소가 반드시 포함되어야 합니다:
 
-### 1. Task and Evaluation Criterion
+### 1. 작업 및 평가 기준
 
-State what the judge evaluates. One failure mode per judge.
-
-```
-You are an evaluator assessing whether a real estate assistant's email
-uses the appropriate tone for the client's persona.
-```
-
-Not: "Evaluate whether the email is good" or "Rate the email quality from 1-5."
-
-### 2. Pass/Fail Definitions
-
-Outcomes are strictly binary: Pass or Fail. No Likert scales, no letter grades, no partial credit. Define exactly what constitutes Pass and Fail. These definitions come from your error analysis failure mode descriptions.
+평가가 무엇을 검증하는지 기술하세요. 평가 기준당 하나의 실패 모드만 다룹니다.
 
 ```
-## Definitions
-
-PASS: The email matches the expected communication style for the client persona:
-- Luxury Buyers: formal language, emphasis on exclusive features, premium
-  market positioning, no casual slang
-- First-Time Homebuyers: warm and encouraging tone, educational explanations,
-  avoids jargon, patient and supportive
-- Investors: data-driven language, ROI-focused, market analytics, concise
-  and professional
-
-FAIL: The email uses a tone mismatched to the client persona. Examples:
-- Using casual slang ("hey, check out this pad!") for a luxury buyer
-- Using heavy financial jargon for a first-time homebuyer
-- Using overly emotional language for an investor
+당신은 부동산 비서 서비스가 작성한 이메일이
+고객의 페르소나에 적합한 말투를 사용하고 있는지 평가하는 평가자입니다.
 ```
 
-### 3. Few-Shot Examples
+나쁜 예: "이메일이 좋은지 평가하세요" 또는 "이메일 품질을 1~5점으로 매기세요."
 
-Include labeled Pass and Fail examples from your human-labeled data.
+### 2. 합격/불합격 (Pass/Fail) 정의
+
+결과는 엄격하게 이진(Pass 혹은 Fail) 방식이어야 합니다. 리커트 척도, 학점, 부분 점수는 허용되지 않습니다. 무엇이 Pass이고 무엇이 Fail인지 정확히 정의하세요. 이 정의는 오류 분석 단계에서 작성한 실패 모드 설명에서 가져옵니다.
 
 ```
-## Examples
+## 정의
 
-### Example 1: PASS
-Client Persona: Luxury Buyer
-Email: "Dear Mr. Harrington, I am pleased to present an exclusive listing
-at 1200 Pacific Heights Drive. This distinguished property features..."
-Critique: The email opens with a formal salutation and uses language
-consistent with luxury positioning — "exclusive listing," "distinguished
-property." No casual slang or informal phrasing. The tone matches the
-luxury buyer persona throughout.
-Result: Pass
+PASS: 이메일이 고객 페르소나에 기대되는 커뮤니케이션 스타일과 일치함.
+- 럭셔리 구매자: 격식 있는 언어 사용, 독점적인 특징 강조, 프리미엄 시장 포지셔닝, 일상적인 속어 지양
+- 생애 첫 주택 구매자: 따뜻하고 격려하는 말투, 교육적인 설명 포함, 전문 용어 지양, 인내심 있고 도움을 주는 태도
+- 투자자: 데이터 중심 언어, 수익률(ROI) 강조, 시장 분석 정보 포함, 간결하고 전문적인 표현
 
-### Example 2: FAIL
-Client Persona: Luxury Buyer
-Email: "Hey! Just found this awesome place you might like. It's got a
-pool and stuff, super cool neighborhood..."
-Critique: The greeting "Hey!" is informal. Phrases like "awesome place,"
-"got a pool and stuff," and "super cool" are casual slang inappropriate
-for a luxury buyer. The email reads like a text message, not a
-professional communication for a high-end client.
-Result: Fail
-
-### Example 3: PASS (borderline)
-Client Persona: First-Time Homebuyer
-Email: "Hi Sarah, I found a property that might be a great fit for your
-first home. The neighborhood has good schools nearby, and the monthly
-payment would be similar to what you're currently paying in rent..."
-Critique: The greeting is warm but not overly casual. The email explains
-the property in relatable terms — comparing mortgage to rent, mentioning
-schools — which is educational without being condescending. It avoids
-jargon like "amortization" or "LTV ratio." While not deeply technical,
-this matches the supportive tone expected for a first-time buyer.
-Result: Pass
+FAIL: 이메일 말투가 고객 페르소나와 일치하지 않음. 예시:
+- 럭셔리 구매자에게 "이 집 진짜 대박이에요!" 같은 가벼운 속어 사용
+- 생애 첫 주택 구매자에게 난해한 금융 전문 용어 남발
+- 투자자에게 지나치게 감성적인 언어 사용
 ```
 
-**Rules for selecting examples:**
-- Include at least one clear Pass, one clear Fail, and one borderline case. Borderline examples are the most valuable — they teach nuance.
-- Draw examples from the training split (10-20% of labeled data set aside for this purpose).
-- Any example used in the judge prompt must be excluded from dev and test sets. Using dev/test examples is data leakage.
-- 2-4 examples is typical. Performance plateaus after 4-8.
+### 3. 퓨샷(Few-Shot) 예시
 
-### 4. Structured Output Format
+사람의 라벨이 있는 데이터에서 합격(Pass)과 실패(Fail) 사례를 포함하세요.
 
-Enforce structured output using your LLM provider's schema enforcement (e.g., `response_format` in OpenAI, tool definitions in Anthropic) or a library like Instructor or Outlines. If the provider doesn't support schema enforcement, specify the JSON schema in the prompt.
+```
+## 예시
 
-The output must include a critique before the verdict. Placing the critique first forces the judge to articulate its assessment before committing to a decision.
+### 예시 1: PASS
+고객 페르소나: 럭셔리 구매자
+이메일: "해링턴 씨께, 퍼시픽 하이츠 드라이브 1200번지의 독점 매물을 소개해 드리게 되어 기쁩니다. 이 품격 있는 저택은..."
+비평: 이메일이 격식 있는 인사말로 시작하며, "독점 매물", "품격 있는 저택" 등 프리미엄 포지셔닝에 걸맞은 언어를 사용하고 있습니다. 가벼운 속어나 비격식적인 표현이 없으며, 전체적으로 럭셔리 구매자 페르소나에 부합합니다.
+결과: Pass
+
+### 예시 2: FAIL
+고객 페르소나: 럭셔리 구매자
+이메일: "안녕! 네가 좋아할 만한 대박인 곳을 찾았어. 수영장도 있고 동네도 진짜 힙해..."
+비평: "안녕!"이라는 인사는 너무 격식이 없습니다. "대박인 곳", "진짜 힙해" 등의 표현은 가벼운 속어로 럭셔리 구매자에게는 부합하지 않습니다. 이메일이라기보다 문자 메시지처럼 느껴지며, 고액 자산가 고객을 위한 전문적인 커뮤니케이션으로 보기 어렵습니다.
+결과: Fail
+
+### 예시 3: PASS (경계선 사례)
+고객 페르소나: 생애 첫 주택 구매자
+이메일: "안녕하세요 서아 님, 서아 님의 첫 집으로 아주 잘 어울릴 만한 매물을 찾았습니다. 주변에 좋은 학교들이 있고, 월 납입금도 현재 내고 계신 월세와 비슷할 거예요..."
+비평: 인사가 따뜻하지만 지나치게 가볍지는 않습니다. 대출금을 월세와 비교하고 학교를 언급하는 등 상대방의 입장에서 이해하기 쉽게 설명하고 있으며, 이는 가르치려 들지 않으면서도 교육적인 효과가 있습니다. "원리금 균등 상환"이나 "LTV 비율" 같은 전문 용어를 피했습니다. 기술적으로 아주 깊이 있지는 않지만, 생애 첫 구매자에게 기대되는 지원하는 듯한 말투에 부합합니다.
+결과: Pass
+```
+
+**예시 선택 규칙:**
+
+- 명확한 Pass 하나, 명확한 Fail 하나, 그리고 최소 하나의 경계선(Borderline) 사례를 포함하세요. 경계선 사례는 미묘한 차이를 가르치는 데 가장 가치 있는 예시입니다.
+- 훈련(Training) 분할 데이터(이 목적으로 따로 떼어둔 라벨링 데이터의 10~20%)에서 예시를 가져오세요.
+- 평가 프롬프트에 사용된 예시는 개발(Dev) 및 테스트(Test) 셋에서 제외해야 합니다. 이를 어기면 데이터 유출(Data leakage)이 발생합니다.
+- 보통 2~4개의 예시가 적당합니다. 4~8개를 넘어가면 성능 향상이 정체됩니다.
+
+### 4. 구조화된 출력 형식
+
+LLM 제공업체의 스키마 강제 기능(OpenAI의 `response_format`, Anthropic의 도구 정의 등)이나 Instructor, Outlines 같은 라이브러리를 사용하여 구조화된 출력을 강제하세요. 제공업체가 스키마 강제를 지원하지 않는 경우 프롬프트에 JSON 스키마를 지정하세요.
+
+출력에는 반드시 판정 결과 이전에 '비평(Critique)'이 포함되어야 합니다. 비평을 먼저 작성하게 함으로써 평가 모델이 결론을 내리기 전에 스스로 근거를 정리하도록 강제할 수 있습니다.
 
 ```json
 {
-  "critique": "string — detailed assessment of the output against the criterion",
-  "result": "Pass or Fail"
+  "critique": "string — 평가 기준에 따른 출력물에 대한 상세한 분석",
+  "result": "Pass 또는 Fail"
 }
 ```
 
-Critiques must be detailed, not terse. A good critique explains what specifically was correct or incorrect and references concrete evidence from the output. The critiques in your few-shot examples set the bar for the level of detail the judge will produce.
+비평은 단순해서는 안 되며 상세해야 합니다. 좋은 비평은 구체적으로 무엇이 옳거나 틀렸는지 설명하고, 출력물에 나타난 구체적인 증거를 인용합니다. 퓨샷 예시에 포함된 비평의 수준이 곧 평가가 생성할 결과물의 수준을 결정합니다.
 
-## Choosing What to Pass to the Judge
+## 평가 대상 선택
 
-Feed only what the judge needs for an accurate decision:
+정확한 판단을 위해 평가 모델에게 꼭 필요한 정보만 전달하세요:
 
-| Failure Mode | What the Judge Needs |
+| 실패 모드 | 평가 시 필요한 정보 |
 |-------------|---------------------|
-| Tone mismatch | Client persona + generated email |
-| Answer faithfulness | Retrieved context + generated answer |
-| SQL correctness | User query + generated SQL + schema |
-| Instruction following | System prompt rules + generated response |
-| Tool call justification | Conversation history + tool call + tool result |
+| 말투 불일치 | 고객 페르소나 + 생성된 이메일 |
+| 답변 성실성 | 검색된 문맥 + 생성된 답변 |
+| SQL 정확성 | 사용자 쿼리 + 생성된 SQL + 테이블 스키마 |
+| 지침 준수 | 시스템 프롬프트 규칙 + 생성된 응답 |
+| 도구 호출 타당성 | 대화 기록 + 도구 호출 내용 + 도구 실행 결과 |
 
-For long documents, feed only the relevant snippet, not the entire document.
+문서가 너무 길다면 전체 문서가 아닌 관련된 부분(Snippet)만 잘라서 전달하세요.
 
-## Model Selection
+## 모델 선택
 
-Start with the most capable model available. The same model used for the main task works as judge (the judge performs a different, narrower task). Optimize for cost later once alignment is confirmed.
+사용 가능한 모델 중 가장 성능이 좋은 모델로 시작하세요. 메인 작업에 사용된 모델과 동일한 모델을 평가 모델로 사용하는 소위 'Self-evaluation'도 가능합니다 (평가는 메인 작업과는 다른, 더 좁은 범위의 작업을 수행하기 때문입니다). 일치도(Alignment)가 확인된 후에 비용 최적화를 고려하세요.
 
-## Anti-Patterns
+## 안티 패턴
 
-- **Vague criteria like "is this helpful?"** Target a specific, observable failure mode from error analysis.
-- **Holistic judge for the entire trace.** A single judge covering multiple dimensions produces unactionable verdicts.
-- **No few-shot examples.** Without examples, the model won't know what counts as a failure in your application.
-- **Dev/test examples used as few-shot.** This is data leakage. Use only the training split.
-- **Likert scales (1-5, letter grades, etc.).** Binary pass/fail only. Likert scales produce scores that sound precise but can't be calibrated: annotators disagree on the difference between a 3 and a 4, and the judge inherits that noise. Binary forces you to define a clear decision boundary upfront, which makes inter-annotator agreement measurable and the judge's errors actionable. If you need to capture severity, use multiple binary judges (e.g., "factually wrong" and "dangerously wrong") rather than one ordinal scale.
-- **Skipping validation.** Measure alignment with human labels using validate-evaluator before trusting the judge.
-- **Judges for specification failures without fixing the prompt first.** If the prompt never asked for the behavior, add the instruction before building an evaluator. For critical requirements, a judge can still serve as a regression guard.
+- **"이것이 유용한가요?"와 같은 모호한 기준.** 오류 분석을 통해 얻은 구체적이고 관찰 가능한 실패 모드를 타겟팅하세요.
+- **전체 트레이스에 대한 포괄적인 평가.** 하나의 평가 기준이 여러 차원을 다루면 실행 가능한 결론을 도출하기 어렵습니다.
+- **퓨샷 예시 누락.** 예시가 없으면 모델은 여러분의 애플리케이션에서 무엇이 실패로 간주되는지 알 수 없습니다.
+- **개발/테스트 셋 예시를 퓨샷으로 사용.** 데이터 유출입니다. 반드시 훈련(Training) 분할 데이터만 사용하세요.
+- **리커트 척도 (1~5점, 학점 등).** 오직 이진(Pass/Fail) 방식만 사용하세요. 수치 척도는 정밀해 보이지만 실제로는 보정이 불가능합니다. 어노테이터마다 3점과 4점의 기준이 다르고 평가 모델은 그 노이즈를 그대로 물려받습니다. 이진 방식은 사전에 명확한 판단 경계를 정의하게 만드므로 어노테이터 간 일치도 측정이 가능해지고 평가의 오류를 수정할 수 있게 합니다. 심각도를 구분해야 한다면 하나의 척도를 쓰는 대신 여러 개의 이진 평가(예: "사실 왜곡" 평가와 "위험한 왜곡" 평가)를 사용하세요.
+- **검증 단계 건너뛰기.** 평가 결과를 신뢰하기 전에 `validate-evaluator`를 사용하여 사람의 라벨과 일치도를 측정하세요.
+- **프롬프트 수정 없이 실패 사례에 대해 평가부터 만들기.** 프롬프트에서 해당 동작을 요청한 적이 없다면 평가기를 만들기 전에 먼저 지침을 추가하세요. 핵심 요구사항의 경우, 프롬프트 수정 후에도 회귀 방지를 위한 가드레일로서 평가를 활용할 수 있습니다.

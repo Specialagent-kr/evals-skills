@@ -1,177 +1,177 @@
 ---
 name: evaluate-rag
 description: >
-  Guides evaluation of RAG pipeline retrieval and generation quality.
-  Use when evaluating a retrieval-augmented generation system, measuring retrieval quality,
-  assessing generation faithfulness or relevance, generating synthetic QA pairs for retrieval
-  testing, or optimizing chunking strategies.
+  RAG(검색 증강 생성) 파이프라인의 검색 및 생성 품질 평가를 안내합니다. RAG 시스템 평가, 검색 품질 측정, 생성 결과의 성실성(Faithfulness) 또는 관련성(Relevance) 산정, 검색 테스트를 위한 합성 질의응답 쌍 생성, 또는 청킹(Chunking) 전략 최적화 시 사용하세요.
 ---
 
-# Evaluate RAG
+# RAG 평가 (Evaluate RAG)
 
-## Overview
+## 개요
 
-1. Do error analysis on end-to-end traces first. Determine whether failures come from retrieval, generation, or both.
-2. Build a retrieval evaluation dataset: queries paired with relevant document chunks.
-3. Measure retrieval quality with Recall@k (most important for first-pass retrieval).
-4. Evaluate generation separately: faithfulness (grounded in context?) and relevance (answers the query?).
-5. If retrieval is the bottleneck, optimize chunking via grid search before tuning generation.
+1. 먼저 엔드투엔드(End-to-End) 트레이스에 대해 오류 분석을 수행하세요. 실패가 검색(Retrieval)에서 오는지, 생성(Generation)에서 오는지, 아니면 둘 다인지 파악하세요.
+2. 검색 평가 데이터셋을 구축하세요: 질문(Query)과 그에 해당하는 관련 문서 청크(Chunk)들을 쌍으로 묶습니다.
+3. 검색 품질을 Recall@k로 측정하세요 (초기 검색 단계에서 가장 중요한 지표입니다).
+4. 생성 품질은 별도로 평가하세요: 성실성(Faithfulness, 문맥에 기반하고 있는가?)과 관련성(Relevance, 질문에 답하고 있는가?).
+5. 검색이 병목 지점이라면, 생성 단계를 튜닝하기 전에 그리드 서치(Grid search)를 통해 청킹 전략을 최적화하세요.
 
-## Prerequisites
+## 전제 조건
 
-Complete error analysis on RAG pipeline traces before selecting metrics. Inspect what was retrieved vs. what the model needed. Determine whether the problem is retrieval, generation, or both. Fix retrieval first.
+지표를 선택하기 전에 RAG 파이프라인 트레이스에 대해 오류 분석을 완료하세요. 무엇이 검색되었는지와 모델에 실제로 필요했던 것이 무엇인지 대조해 보세요. 문제가 검색인지, 생성인지, 아니면 둘 다인지 판단하세요. 검색 문제를 먼저 해결해야 합니다.
 
-## Core Instructions
+## 핵심 지침
 
-### Evaluate Retrieval and Generation Separately
+### 검색과 생성을 분리하여 평가
 
-Measure each component independently. Use the appropriate metric for each retrieval stage:
+각 구성 요소를 독립적으로 측정하세요. 각 검색 단계에 적합한 지표를 사용하세요:
 
-- **First-pass retrieval:** Optimize for Recall@k. Include all relevant documents, even at the cost of noise.
-- **Reranking:** Optimize for Precision@k, MRR, or NDCG@k. Rank the most relevant documents first.
+- **초기 검색 (First-pass retrieval):** Recall@k 최적화. 노이즈가 포함되더라도 관련된 모든 문서를 포함하는 데 집중합니다.
+- **재순위화 (Reranking):** Precision@k, MRR, 또는 NDCG@k 최적화. 가장 관련성이 높은 문서를 상단에 배치합니다.
 
-### Building a Retrieval Evaluation Dataset
+### 검색 평가 데이터셋 구축
 
-You need queries paired with ground-truth relevant document chunks.
+질문(Query)과 정답에 해당하는(Ground-truth) 관련 문서 청크 쌍이 필요합니다.
 
-**Manual curation (highest quality):** Write realistic questions and map each to the exact chunk(s) containing the answer.
+**수동 구축 (최고 품질):** 실제적인 질문을 작성하고, 각 질문을 정답이 포함된 정확한 청크와 연결합니다.
 
-**Synthetic QA generation (scalable):** For each document chunk, prompt an LLM to extract a fact and generate a question answerable only from that fact.
+**합성 질의응답 생성 (확장성):** 각 문서 청크에 대해, 특정 사실을 추출하고 해당 사실로만 답변할 수 있는 질문을 생성하도록 LLM에 요청합니다.
 
-Synthetic QA prompt template:
+합성 질의응답 프롬프트 템플릿:
 
 ```
-Given a chunk of text, extract a specific, self-contained fact from it.
-Then write a question that is directly and unambiguously answered
-by that fact alone.
+텍스트 청크가 주어지면, 그 안에서 구체적이고 자립적인(Self-contained) 사실 하나를 추출하세요.
+그 다음, 오직 해당 사실로만 직접적이고 명확하게 답변할 수 있는 질문을 작성하세요.
 
-Return output in JSON format:
+출력은 JSON 형식으로 반환하세요:
 { "fact": "...", "question": "..." }
 
-Chunk: "{text_chunk}"
+청크: "{text_chunk}"
 ```
 
-**Adversarial question generation:** Create harder queries that resemble content in multiple chunks but are only answered by one.
+**대조적 질문 생성 (Adversarial question generation):** 여러 청크에 비슷한 내용이 들어있지만 오직 하나의 청크로만 답변 가능한 더 어려운 질문을 만듭니다.
 
-Process:
-1. Select target chunk A containing a clear fact.
-2. Find similar chunks B, C using embedding search (chunks that share terminology but lack the answer).
-3. Prompt the LLM to write a question using terminology from B and C that only chunk A answers.
+프로세스:
 
-Example:
-- Chunk A: "In April 2020, the company reported a 17% drop in quarterly revenue, its largest decline since 2008."
-- Chunk B: "The company experienced significant losses in 2008 during the financial crisis."
-- Generated question: "When did the company experience its largest revenue decline since the 2008 financial crisis?"
+1. 명확한 사실이 포함된 타겟 청크 A를 선택합니다.
+2. 임베딩 검색을 사용하여 용어는 공유하지만 정답은 없는 유사한 청크 B, C를 찾습니다.
+3. B와 C의 용어를 사용하면서 오직 청크 A로만 답변 가능한 질문을 작성하도록 LLM에 요청합니다.
 
-Only chunk A contains the answer. Chunk B is a plausible distractor.
+예시:
 
-**Filtering synthetic questions:** Rate synthetic queries for realism using few-shot LLM scoring. Keep only those rated realistic (4-5 on a 1-5 scale). Likert scoring is appropriate here, since the goal is fuzzy ranking for dataset curation, not measuring failure rates.
+- 청크 A: "2020년 4월, 회사는 분기 매출이 17% 감소했다고 발표했으며, 이는 2008년 이후 최대 감소 폭입니다."
+- 청크 B: "회사는 2008년 금융 위기 당시 상당한 손실을 겪었습니다."
+- 생성된 질문: "회사가 2008년 금융 위기 이후 최대 매출 감소를 기록한 것은 언제입니까?"
 
-### Retrieval Metrics
+오직 청크 A에만 답변이 들어있습니다. 청크 B는 그럴싸한 방해 요소(Distractor) 역할을 합니다.
 
-**Recall@k:** Fraction of relevant documents found in the top k results.
+**합성 질문 필터링:** 퓨샷 LLM 스코어링을 사용하여 합성 질문의 현실성을 평가하세요. 현실적인 것(1~5점 척도 중 4~5점)만 유지합니다. 여기서는 실패율 측정이 아니라 데이터셋 선별을 위한 모호한 순위 매기기가 목적이므로 리커트 척도 사용이 적합합니다.
 
-```
-Recall@k = (relevant docs in top k) / (total relevant docs for query)
-```
+### 검색 지표
 
-Prioritize recall for first-pass retrieval. LLMs can ignore irrelevant content but cannot generate from missing content.
-
-**Precision@k:** Fraction of top k results that are relevant.
+**Recall@k:** 상위 k개 결과 중 관련 문서가 포함된 비율.
 
 ```
-Precision@k = (relevant docs in top k) / k
+Recall@k = (상위 k개 중 관련 문서 수) / (질문에 대한 전체 관련 문서 수)
 ```
 
-Use for reranking evaluation.
+초기 검색 단계에서는 재현율(Recall)을 우선시하세요. LLM은 관련 없는 내용을 무시할 수는 있지만, 누락된 내용으로부터 답변을 생성할 수는 없습니다.
 
-**Mean Reciprocal Rank (MRR):** How early the first relevant document appears.
-
-```
-MRR = (1/N) * sum(1/rank_of_first_relevant_doc)
-```
-
-Best for single-fact lookups where only one key chunk is needed.
-
-**NDCG@k (Normalized Discounted Cumulative Gain):** For graded relevance where documents have varying utility. Rewards placing more relevant items higher.
+**Precision@k:** 상위 k개 결과 중 실제 관련 문서의 비율.
 
 ```
-DCG@k  = sum over i=1..k of: rel_i / log2(i+1)
-IDCG@k = DCG@k with documents sorted by decreasing relevance
+Precision@k = (상위 k개 중 관련 문서 수) / k
+```
+
+재순위화 평가에 사용합니다.
+
+**평균 역순위 (MRR, Mean Reciprocal Rank):** 첫 번째 관련 문서가 얼마나 빨리 나타나는지 측정.
+
+```
+MRR = (1/N) * sum(1/첫_번째_관련_문서의_순위)
+```
+
+하나의 핵심 청크만 필요한 단일 사실 조회(Single-fact lookup)에 가장 적합합니다.
+
+**NDCG@k (Normalized Discounted Cumulative Gain):** 문서마다 유용도가 다른 단계적 관련성 평가에 사용합니다. 관련성이 높은 항목이 상단에 올수록 높은 점수를 부여합니다.
+
+```
+DCG@k  = i=1..k 에 대한 합: rel_i / log2(i+1)
+IDCG@k = 관련성 내림차순으로 정렬된 문서들에 대한 DCG@k
 NDCG@k = DCG@k / IDCG@k
 ```
 
-Caveat: Optimal ranking of weakly relevant documents can outscore a highly relevant document ranked lower. Supplement with Recall@k.
+주의: 관련성이 낮은 문서들이 최적으로 정렬된 경우, 점수 상으로는 하단에 위치한 관련성 높은 문서 하나보다 높게 나올 수 있습니다. 반드시 Recall@k와 병행하여 확인하세요.
 
-**Choosing k:** k varies by query type. A factual lookup uses k=1-2. A synthesis query ("summarize market trends") uses k=5-10.
+**k 값 선택:** 질문 유형에 따라 k는 달라집니다. 사실 조회형은 k=1-2를 사용하고, 종합형 질문("시장 동향 요약")은 k=5-10을 사용합니다.
 
-#### Metric Selection
+#### 지표 선택 가이드
 
-| Query Type | Primary Metric |
+| 질문 유형 | 주요 지표 |
 |---|---|
-| Single-fact lookups | MRR |
-| Broad coverage needed | Recall@k |
-| Ranked quality matters | NDCG@k or Precision@k |
-| Multi-hop reasoning | Two-hop Recall@k |
+| 단일 사실 조회 | MRR |
+| 폭넓은 정보 필요 | Recall@k |
+| 순위 품질이 중요함 | NDCG@k 또는 Precision@k |
+| 멀티홉(Multi-hop) 추론 | Two-hop Recall@k |
 
-### Evaluating and Optimizing Chunking
+### 청킹(Chunking) 평가 및 최적화
 
-Treat chunking as a tunable hyperparameter. Even with the same retriever, metrics vary based on chunking alone.
+청킹을 튜닝 가능한 하이퍼파라미터로 취급하세요. 동일한 검색기(Retriever)를 사용하더라도 청킹 방식만으로 지표가 달라집니다.
 
-**Grid search for fixed-size chunking:** Test combinations of chunk size and overlap. Re-index the corpus for each configuration. Measure retrieval metrics on your evaluation dataset.
+**고정 크기 청킹을 위한 그리드 서치:** 청크 크기와 겹침(Overlap) 정도의 조합을 테스트하세요. 각 설정마다 코퍼스(Corpus) 인덱스를 다시 생성하고, 평가 데이터셋에 대해 검색 지표를 측정합니다.
 
-Example search grid:
+검색 그리드 예시:
 
-| Chunk size | Overlap | Recall@5 | NDCG@5 |
+| 청크 크기 | 겹침 정도 | Recall@5 | NDCG@5 |
 |-----------|---------|----------|--------|
-| 128 tokens | 0 | 0.82 | 0.69 |
-| 128 tokens | 64 | 0.88 | 0.75 |
-| 256 tokens | 0 | 0.86 | 0.74 |
-| 256 tokens | 128 | 0.89 | 0.77 |
-| 512 tokens | 0 | 0.80 | 0.72 |
-| 512 tokens | 256 | 0.83 | 0.74 |
+| 128 토큰 | 0 | 0.82 | 0.69 |
+| 128 토큰 | 64 | 0.88 | 0.75 |
+| 256 토큰 | 0 | 0.86 | 0.74 |
+| 256 토큰 | 128 | 0.89 | 0.77 |
+| 512 토큰 | 0 | 0.80 | 0.72 |
+| 512 토큰 | 256 | 0.83 | 0.74 |
 
-**Content-aware chunking:** When fixed-size chunks split related information:
-- Use natural document boundaries (sections, paragraphs, steps).
-- Augment chunks with context: prepend document title and section headings to each chunk before embedding.
+**콘텐츠 인식 청킹 (Content-aware chunking):** 고정 크기 청킹이 관련 정보를 쪼개는 경우:
 
-### Evaluating Generation Quality
+- 문서의 자연스러운 경계(섹션, 단락, 단계)를 사용하세요.
+- 청크에 문맥 보강: 임베딩 처리 전 각 청크 앞에 문서 제목과 섹션 헤더를 붙여넣습니다.
 
-After confirming retrieval works, evaluate what the LLM does with the retrieved context along two dimensions:
+### 생성 품질 평가
 
-**Answer faithfulness:** Does the output accurately reflect the retrieved context? Check for:
-- **Hallucinations:** Information absent from source documents. In RAG, even correct facts from the LLM's own knowledge count as hallucinations.
-- **Omissions:** Relevant information from the context ignored in the output.
-- **Misinterpretations:** Context information represented inaccurately.
+검색 성능이 확인되면, LLM이 검색된 문맥을 어떻게 처리하는지 두 가지 차원에서 평가하세요:
 
-**Answer relevance:** Does the output address the original query? An answer can be faithful to the context but fail to answer what the user asked.
+**답변 성실성 (Faithfulness):** 출력물이 검색된 문맥을 정확하게 반영하고 있는가? 다음을 확인하세요:
 
-Use error analysis to discover specific manifestations in your pipeline. Identify what kind of information gets hallucinated and which constraints get omitted.
+- **환각 (Hallucination):** 원본 문서에 없는 정보. RAG에서는 LLM이 알고 있는 사실이라 하더라도 문맥에 없다면 환각으로 간주합니다.
+- **누락 (Omission):** 문맥에 포함된 관련 정보가 출력에서 무시됨.
+- **오해 (Misinterpretation):** 문맥 정보를 부정확하게 표현함.
 
-#### Diagnosing Failures by Metric Pattern
+**답변 관련성 (Relevance):** 출력물이 원래 질문에 답하고 있는가? 답변이 문맥에는 충실하더라도 사용자가 물어본 것에 대한 답이 아닐 수 있습니다.
 
-| Context Relevance | Faithfulness | Answer Relevance | Diagnosis |
+오류 분석을 통해 우리 파이프라인에서 구체적으로 어떤 양상으로 나타나는지 파악하세요. 어떤 종류의 정보가 환각을 일으키는지, 어떤 제약 조건이 누락되는지 식별하세요.
+
+#### 지표 패턴에 따른 진단
+
+| 문맥 관련성 | 성실성 | 답변 관련성 | 진단 결과 |
 |---|---|---|---|
-| High | High | Low | Generator attended to wrong section of a correct document |
-| High | Low | -- | Hallucination or misinterpretation of retrieved content |
-| Low | -- | -- | Retrieval problem. Fix chunking, embeddings, or query preprocessing |
+| 높음 | 높음 | 낮음 | 생성기가 올바른 문서 내의 엉뚱한 섹션에 집중함 |
+| 높음 | 낮음 | -- | 검색된 내용에 대한 환각 또는 오해 발생 |
+| 낮음 | -- | -- | 검색 문제. 청킹, 임베딩, 또는 쿼리 전처리 수정 필요 |
 
-### Multi-Hop Retrieval Evaluation
+### 멀티홉 검색 평가
 
-For queries requiring information from multiple chunks:
+여러 청크의 정보가 동시에 필요한 질문의 경우:
 
-**Two-hop Recall@k:** Fraction of 2-hop queries where both ground-truth chunks appear in the top k results.
+**Two-hop Recall@k:** 두 개의 정답 청크가 모두 상위 k개 결과 내에 포함된 2홉 질문의 비율.
 
 ```
-TwoHopRecall@k = (1/N) * sum(1 if {Chunk1, Chunk2} ⊆ top_k_results)
+TwoHopRecall@k = (1/N) * sum(1 if {청크1, 청크2} ⊆ 상위_k개_결과)
 ```
 
-Diagnose failures by classifying: hop 1 miss, hop 2 miss, or rank-out-of-top-k.
+실패 사례를 분류하여 진단하세요: 첫 번째 홉 누락, 두 번째 홉 누락, 또는 정답이 상위 k개 밖으로 밀려남.
 
-## Anti-Patterns
+## 안티 패턴
 
-- Using a single end-to-end correctness metric without separating retrieval and generation measurement.
-- Jumping directly to metrics without reading traces first.
-- Overfitting to synthetic evaluation data. Validate against real user queries regularly.
-- Using similarity metrics (ROUGE, BERTScore, cosine similarity) as primary generation evaluation. Use binary evaluators driven by error analysis.
-- Evaluating generation without checking context grounding.
+- 검색과 생성 측정을 분리하지 않고 하나의 엔드투엔드 정확도 지표만 사용함.
+- 트레이스를 읽어보지 않고 바로 지표 측정으로 넘어감.
+- 합성 평가 데이터에 과적합(Overfitting)됨. 정기적으로 실제 사용자 쿼리로 검증하세요.
+- 유사도 지표(ROUGE, BERTScore, 코사인 유사도)를 생성 품질 평가의 주된 수단으로 사용함. 오류 분석에 기반한 이진 평가기를 사용하세요.
+- 문맥 기반 확인 없이 생성 결과만 평가함.

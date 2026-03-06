@@ -1,183 +1,178 @@
 ---
 name: eval-audit
 description: >
-  Audit an LLM eval pipeline and surface problems: missing error analysis,
-  unvalidated judges, vanity metrics, etc. Use when
-  inheriting an eval system, when unsure whether evals are trustworthy, or as a
-  starting point when no eval infrastructure exists. Do NOT use when the goal
-  is to build a new evaluator from scratch (use error-analysis,
-  write-judge-prompt, or validate-evaluator instead).
+  LLM 평가 파이프라인을 감사하고 오류 분석 누락, 검증되지 않은 평가 모델(Judge), 허영 지표(Vanity metrics) 등의 문제를 찾아냅니다. 평가 시스템을 인계받았을 때, 기존 평가 결과를 신뢰할 수 있는지 불분명할 때, 또는 평가 인프라가 전혀 없는 상태에서 시작점으로 사용하세요. 처음부터 새로운 평가기를 구축하는 것이 목표인 경우에는 사용하지 마세요 (대신 `error-analysis`, `write-judge-prompt`, 또는 `validate-evaluator`를 사용하세요).
 ---
 
-# Eval Audit
+# 평가 감사 (Eval Audit)
 
-Inspect an LLM eval pipeline and produce a prioritized list of problems with concrete next steps.
+LLM 평가 파이프라인을 점검하고, 구체적인 후속 조치와 함께 우선순위가 지정된 문제 목록을 생성합니다.
 
-## Overview
+## 개요
 
-1. Gather eval artifacts: traces, evaluator configs, judge prompts, labeled data, metrics dashboards
-2. Run diagnostic checks across six areas
-3. Produce a findings report ordered by impact, with each finding linking to a fix
+1. 평가 결과물 수집: 트레이스, 평가기 설정, 평가(Judge) 프롬프트, 라벨링된 데이터, 지표 대시보드 등
+2. 6개 영역에 걸쳐 진단 체크 실행
+3. 영향도 순으로 정리된 결과 보고서 작성 (각 결과에는 해결 방법 링크 포함)
 
-## Prerequisites
+## 전제 조건
 
-Access to eval artifacts (traces, evaluator configs, judge prompts, labeled data) via an observability MCP server or local files. If none exist, skip to "No Eval Infrastructure."
+가상화 MCP 서버 또는 로컬 파일을 통해 평가 결과물(트레이스, 평가기 설정, 평가 프롬프트, 라벨링된 데이터)에 접근할 수 있어야 합니다. 결과물이 하나도 없다면 "평가 인프라가 없는 경우" 섹션으로 건너뛰세요.
 
-## Connecting to Eval Infrastructure
+## 평가 인프라 연결
 
-Check whether the user has an observability MCP server connected (Phoenix, Braintrust, LangSmith, Truesight or similar). If available, use it to pull traces, evaluator definitions, and experiment results. If not, ask for local files: CSVs, JSON trace exports, notebooks, or evaluation scripts.
+배포된 관측성(Observability) MCP 서버(Phoenix, Braintrust, LangSmith, Truesight 등)가 있는지 확인하세요. 사용 가능하다면 이를 통해 트레이스, 평가기 정의, 실험 결과를 가져오세요. 없다면 CSV, JSON 트레이스 내보내기 파일, 노트북, 또는 평가 스크립트 등의 로컬 파일을 요청하세요.
 
-## Diagnostic Checks
+## 진단 체크
 
-Work through each area below. Inspect available artifacts, determine whether the problem exists, and record a finding if it does.
+아래의 각 영역을 점검하세요. 사용 가능한 결과물들을 조사하여 문제가 존재하는지 판단하고, 발견된 경우 기록하세요.
 
-Prioritize findings by impact on the user's product. Present the most impactful findings first.
+사용자의 제품에 미치는 영향도에 따라 발견 사항의 우선순위를 정하세요. 가장 영향이 큰 내용부터 제시합니다.
 
-### 1. Error Analysis
+### 1. 오류 분석 (Error Analysis)
 
-**Check:** Has the user done systematic error analysis on real or synthetic traces?
+**체크:** 사용자가 실제 또는 합성 트레이스에 대해 체계적인 오류 분석을 수행했는가?
 
-Look for: labeled trace datasets, failure category definitions, notes from trace review. If evaluators exist but no documented failure categories, error analysis was likely skipped.
+확인 사항: 라벨링된 트레이스 데이터셋, 실패 카테고리 정의, 트레이스 검토 기록. 평가기는 존재하지만 문서화된 실패 카테고리가 없다면 오류 분석을 건너뛰었을 가능성이 큽니다.
 
-**Finding if missing:** Evaluators built without error analysis measure generic qualities ("helpfulness", "coherence") instead of actual failure modes. Start with `error-analysis`, or `generate-synthetic-data` first if no traces exist.
+**누락 시 진단:** 오류 분석 없이 구축된 평가기는 실제 실패 모드가 아닌 일반적인 특성("유용성", "일관성")만 측정하게 됩니다. `error-analysis`를 시작하거나, 트레이스가 없다면 `generate-synthetic-data`를 먼저 수행하세요.
 
-See: [Your AI Product Needs Evals](https://hamel.dev/blog/posts/evals/index.html), [LLM Evals FAQ](https://hamel.dev/blog/posts/evals-faq/)
+참고: [Your AI Product Needs Evals](https://hamel.dev/blog/posts/evals/index.html), [LLM Evals FAQ](https://hamel.dev/blog/posts/evals-faq/)
 
-**Check:** Were failure categories brainstormed or observed?
+**체크:** 실패 카테고리가 브레인스토밍된 것인가, 아니면 관찰된 것인가?
 
-Generic labels borrowed from research ("hallucination score", "toxicity", "coherence") suggest brainstorming. Application-grounded categories ("missing query constraints", "wrong client tone", "fabricated property features") suggest observation.
+연구 논문에서 빌려온 일반적인 라벨("환각 점수", "독성", "일관성")은 브레인스토밍의 결과일 가능성이 높습니다. 애플리케이션에 특화된 카테고리("쿼리 제약 조건 누락", "잘못된 고객 말투", "매물 특징 왜곡")는 관찰의 결과입니다.
 
-**Finding if brainstormed:** Generic categories miss application-specific failures and produce evaluators that score well on paper but miss real problems. Re-do with `error-analysis`, starting from traces.
+**브레인스토밍 시 진단:** 일반적인 카테고리는 애플리케이션 고유의 실패 사례를 놓치기 쉽고, 서류상으로는 점수가 잘 나오지만 실제 문제는 잡아내지 못하는 평가기를 만듭니다. 트레이스 관찰부터 시작하는 `error-analysis`를 다시 수행하세요.
 
-See: [Who Validates the Validators?](https://arxiv.org/abs/2404.12272)
+참고: [Who Validates the Validators?](https://arxiv.org/abs/2404.12272)
 
-### 2. Evaluator Design
+### 2. 평가기 설계 (Evaluator Design)
 
-**Check:** Are evaluators binary pass/fail?
+**체크:** 평가기가 이진(Pass/Fail) 방식인가?
 
-Flag any that use Likert scales (1-5), letter grades (A-F), or numeric scores without a clear pass/fail threshold.
+리커트 척도(1~5점), 학점(A~F), 또는 명확한 합격/불합격 임계값이 없는 수치 점수를 사용하는 경우 플래그를 지정하세요.
 
-**Finding if not binary:** Likert scales are difficult to calibrate. Annotators disagree on the difference between a 3 and a 4, and judges inherit that noise. Consider converting to binary pass/fail with explicit definitions using `write-judge-prompt`.
+**비이진 방식 시 진단:** 리커트 척도는 보정하기 어렵습니다. 어노테이터마다 3점과 4점의 차이에 대해 의견이 다를 수 있으며, 평가 모델(Judge)도 이러한 노이즈를 그대로 학습합니다. `write-judge-prompt`를 사용하여 명확한 정의가 포함된 이진 방식으로 전환하는 것을 고려하세요.
 
-See: [Creating an LLM Judge That Drives Business Results](https://hamel.dev/blog/posts/llm-judge/)
+참고: [Creating an LLM Judge That Drives Business Results](https://hamel.dev/blog/posts/llm-judge/)
 
-**Check:** Do LLM judge prompts target specific failure modes?
+**체크:** LLM 평가 프롬프트가 특정 실패 모드를 타겟팅하고 있는가?
 
-Flag any that evaluate holistically ("Is this response helpful?", "Rate the quality of this output").
+포괄적으로 평가하는 경우("이 응답이 유용한가요?", "이 출력의 품질을 평가하세요") 플래그를 지정하세요.
 
-**Finding if vague:** Holistic judges produce unactionable verdicts. Each judge should check exactly one failure mode with explicit pass/fail definitions and few-shot examples. Use `write-judge-prompt`.
+**모호한 경우 진단:** 포괄적인 평가는 실행 가능한 결과를 만들어내지 못합니다. 각 평가기는 명확한 합격/불합격 정의와 퓨샷 예시를 바탕으로 정확히 하나의 실패 모드만 확인해야 합니다. `write-judge-prompt`를 사용하세요.
 
-**Check:** Are code-based checks used where possible?
+**체크:** 가능한 곳에 코드 기반 검토를 사용하고 있는가?
 
-Flag LLM judges used for objectively checkable criteria: format validation, constraint satisfaction, keyword presence, schema conformance.
+형식 유효성, 제약 조건 충족 여부, 키워드 포함 여부, 스키마 준수 등 객관적으로 확인 가능한 기준에 LLM 평가를 사용하는 경우 플래그를 지정하세요.
 
-**Finding if over-relying on judges:** Replace objective checks with code (regex, parsing, schema validation, execution tests). Reserve LLM judges for criteria requiring interpretation.
+**평가 모델에 과하게 의존하는 경우 진단:** 객관적인 체크는 코드(정규표현식, 파싱, 스키마 검사, 실행 테스트)로 대체하세요. LLM 평가는 해석이 필요한 기준에만 아껴서 사용해야 합니다.
 
-**Check:** Are similarity metrics used as primary evaluation?
+**체크:** 유사도 지표를 주요 평가 수단으로 사용하고 있는가?
 
-Flag ROUGE, BERTScore, cosine similarity, or embedding distance used as the main evaluator for generation quality.
+생성 결과의 품질을 평가하기 위해 ROUGE, BERTScore, 코사인 유사도, 또는 임베딩 거리를 주된 평가 지표로 사용하는 경우 플래그를 지정하세요.
 
-**Finding if present:** These metrics measure surface-level overlap, not correctness. They suit retrieval ranking but not generation evaluation. Replace with binary evaluators grounded in specific failure modes.
+**사용 시 진단:** 이러한 지표는 표면적인 텍스트 중첩을 측정할 뿐 정확성을 보장하지 않습니다. 검색 결과의 순위를 매기는 데는 적합할 수 있으나 생성 결과 평가에는 적합하지 않습니다. 구체적인 실패 모드에 기반한 이진 평가기로 교체하세요.
 
-See: [LLM Evals FAQ](https://hamel.dev/blog/posts/evals-faq/)
+참고: [LLM Evals FAQ](https://hamel.dev/blog/posts/evals-faq/)
 
-### 3. Judge Validation
+### 3. 평가 모델(Judge) 검증
 
-**Check:** Are LLM judges validated against human labels?
+**체크:** LLM 평가 모델이 사람의 라벨과 대조하여 검증되었는가?
 
-Look for: confusion matrices, TPR/TNR measurements, alignment scores. Judges in production with no validation data is a critical finding.
+확인 사항: 혼동 행렬(Confusion matrix), TPR/TNR 측정값, 일치도 점수. 검증 데이터 없이 프로덕션에 적용된 평가는 매우 심각한 문제입니다.
 
-**Finding if unvalidated:** An unvalidated judge may consistently miss failures or flag passing traces. Measure alignment using TPR and TNR on a held-out test set. Use `validate-evaluator`.
+**미검증 시 진단:** 검증되지 않은 평가는 실패 사례를 지속적으로 놓치거나 정상적인 트레이스를 실패로 잘못 판정할 수 있습니다. 별도의 테스트 셋에 대해 TPR과 TNR을 사용하여 일치도를 측정하세요. `validate-evaluator`를 사용하세요.
 
-See: [Creating an LLM Judge That Drives Business Results](https://hamel.dev/blog/posts/llm-judge/)
+참고: [Creating an LLM Judge That Drives Business Results](https://hamel.dev/blog/posts/llm-judge/)
 
-**Check:** Is alignment measured with TPR/TNR or with raw accuracy?
+**체크:** 일치도 측정을 TPR/TNR로 하는가, 아니면 단순 정확도(Accuracy)로 하는가?
 
-Flag "accuracy", "percent agreement", or Cohen's Kappa as the primary alignment metric.
+"정확도", "일치율(Percent agreement)", 또는 코헨의 카파(Cohen's Kappa)를 주요 일치도 지표로 사용하는 경우 플래그를 지정하세요.
 
-**Finding if using accuracy:** With class imbalance, raw accuracy is misleading: a judge that always says "Pass" gets 90% accuracy when 90% of traces pass but catches zero failures. Use TPR and TNR, which map directly to bias correction. Use `validate-evaluator`.
+**정확도 사용 시 진단:** 클래스 불균형이 있는 경우 단순 정확도는 오해의 소지가 큽니다. 예를 들어 90%의 트레이스가 정상인 경우, 무조건 "Pass"만 외치는 평가기도 90%의 정확도를 기록하지만 실제 실패는 하나도 잡아내지 못합니다. 편향 보정과 직접적으로 연결되는 TPR과 TNR을 사용하세요. `validate-evaluator`를 사용하세요.
 
-**Check:** Is there a proper train/dev/test split?
+**체크:** 적절한 훈련/개발/테스트(Train/Dev/Test) 데이터 분할이 이루어졌는가?
 
-Check whether few-shot examples in judge prompts come from the same data used to measure judge performance.
+평가 프롬프트에 사용된 퓨샷 예시가 평가 성능을 측정하는 데 사용된 데이터와 겹치는지 확인하세요.
 
-**Finding if leaking:** Using evaluation data as few-shot examples inflates alignment scores and hides real judge failures. Split into train (few-shot source), dev (iteration), and test (final measurement). Use `validate-evaluator`.
+**데이터 유출(Leakage) 시 진단:** 평가 데이터를 퓨샷 예시로 사용하면 일치도 점수가 비정상적으로 높게 나오고 평가 모델의 실제 결함이 가려집니다. 데이터를 훈련(퓨샷 출처), 개발(반복 개선), 테스트(최종 측정)용으로 분리하세요. `validate-evaluator`를 사용하세요.
 
-### 4. Human Review Process
+### 4. 사람의 리뷰 프로세스
 
-**Check:** Who is reviewing traces?
+**체크:** 누가 트레이스를 검토하고 있는가?
 
-Determine whether domain experts or outsourced annotators are labeling data.
+도메인 전문가가 라벨링을 하는지, 아니면 외부 어노테이터가 하는지 파악하세요.
 
-**Finding if outsourced without domain expertise:** General annotators catch formatting errors but miss domain-specific failures (wrong medical dosage, incorrect legal citation, mismatched property features). Involve a domain expert.
+**전문성 없는 외부 인력 활용 시 진단:** 일반 어노테이터는 형식적인 오류는 잡아낼 수 있지만 도메인 특화 실패(잘못된 약물 복용량, 부적절한 법률 인용, 일치하지 않는 매물 특징 등)를 놓치기 쉽습니다. 도메인 전문가를 참여시키세요.
 
-See: [A Field Guide to Improving AI Products](https://hamel.dev/blog/posts/field-guide/)
+참고: [A Field Guide to Improving AI Products](https://hamel.dev/blog/posts/field-guide/)
 
-**Check:** Are reviewers seeing full traces or just final outputs?
+**체크:** 리뷰어가 전체 트레이스를 보는가, 아니면 최종 출력만 보는가?
 
-**Finding if output-only:** Reviewing only the final output hides where the pipeline broke. Show the full trace: input, intermediate steps, tool calls, retrieved context, and final output.
+**출력만 보는 경우 진단:** 최종 결과물만 검토하면 파이프라인의 어느 단계에서 문제가 발생했는지 알 수 없습니다. 입력값, 중간 단계, 도구 호출, 검색된 문맥, 최종 결과물을 모두 포함한 전체 트레이스를 보여주세요.
 
-**Check:** How is data displayed to reviewers?
+**체크:** 리뷰어에게 데이터가 어떻게 표시되는가?
 
-Flag raw JSON, unformatted text, or spreadsheets with trace data in cells.
+가공되지 않은 JSON, 포맷팅되지 않은 텍스트, 또는 셀 안에 트레이스 데이터가 들어있는 스프레드시트를 사용하는 경우 플래그를 지정하세요.
 
-**Finding if raw format:** Reviewers spend effort parsing data instead of judging quality. Format in natural representation: render markdown, syntax-highlight code, display tables as tables. Use `build-review-interface`.
+**원시 형식 노출 시 진단:** 리뷰어가 품질을 판단하는 대신 데이터를 파싱하는 데 에너지를 낭비하게 됩니다. 마크다운 렌더링, 코드 구문 강조, 표 형식 표시 등 자연스러운 형태로 포맷팅하세요. `build-review-interface`를 사용하세요.
 
-See: [LLM Evals FAQ](https://hamel.dev/blog/posts/evals-faq/)
+참고: [LLM Evals FAQ](https://hamel.dev/blog/posts/evals-faq/)
 
-### 5. Labeled Data
+### 5. 라벨링된 데이터
 
-**Check:** Is there enough labeled data?
+**체크:** 라벨링된 데이터가 충분한가?
 
-For error analysis, ~100 traces is the rough target for saturation. For judge validation, ~50 Pass and ~50 Fail examples are needed for reliable TPR/TNR. If labeled data is sparse, collect more by sampling traces more effectively:
+오류 분석을 위해서는 약 100개의 트레이스가 포화(Saturation) 목표치입니다. 평가 모델 검증을 위해서는 신뢰할 수 있는 TPR/TNR 계산을 위해 약 50개의 합격(Pass) 예시와 50개의 실패(Fail) 예시가 필요합니다. 데이터가 부족하다면 다음과 같은 효과적인 샘플링 전략을 사용하여 더 수집하세요:
 
-- **Random:** Always include a random sample alongside other strategies to discover unknown issues.
-- **Clustering:** Group traces by semantic similarity and review representatives from each cluster.
-- **Data analysis:** Analyze statistics on latency, turns, tool calls, and tokens for outliers.
-- **Classification:** Use existing evals, a predictive model, or an LLM to surface problematic traces. Use with caution.
-- **Feedback:** Use explicit customer feedback (complaints, thumbs-down signals) to filter traces.
+- **무작위 (Random):** 알려지지 않은 문제를 발견하기 위해 항상 다른 전략과 병합하여 사용하세요.
+- **클러스터링 (Clustering):** 의미론적 유사성에 따라 트레이스를 그룹화하고 각 클러스터의 대표 사례를 검토하세요.
+- **데이터 분석:** 지연 시간, 대화 턴 수, 도구 호출 횟수, 토큰 수 등의 통계를 분석하여 이상치(Outlier)를 찾으세요.
+- **분류 (Classification):** 기존 평가기나 예측 모델, 또는 LLM을 사용하여 문제가 될만한 트레이스를 골라내세요 (주의해서 사용).
+- **피드백 (Feedback):** 고객의 명시적인 피드백(불만, 싫어요 신호 등)을 사용하여 트레이스를 필터링하세요.
 
-**Finding if insufficient:** Small datasets produce unreliable failure rates and wide confidence intervals. Use the sampling strategies above to collect more labeled data, or supplement with `generate-synthetic-data`.
+**부족 시 진단:** 적은 양의 데이터셋은 신뢰할 수 없는 실패율과 넓은 신뢰 구간을 만들어냅니다. 위의 샘플링 전략을 사용하여 라벨링된 데이터를 더 수집하거나, `generate-synthetic-data`로 보완하세요.
 
-### 6. Pipeline Hygiene
+### 6. 파이프라인 위생 관리
 
-**Check:** Is error analysis re-run after significant changes?
+**체크:** 중대한 변경 후에 오류 분석을 다시 수행하는가?
 
-Check when error analysis was last performed relative to model switches, prompt rewrites, new features, or production incidents.
+모델 교체, 프롬프트 재작성, 새 기능 추가, 또는 프로덕션 장애 발생 시점과 비교하여 오류 분석이 언제 마지막으로 수행되었는지 확인하세요.
 
-**Finding if stale:** Failure modes shift after pipeline changes, and evaluators built for the old pipeline miss new failure types. Re-run error analysis after every significant change.
+**방치 시 진단:** 파이프라인이 변경되면 실패 모드도 변하며, 이전 파이프라인에 맞춰 구축된 평가기는 새로운 유형의 실패를 놓치게 됩니다. 중대한 변경이 있을 때마다 오류 분석을 다시 실행하세요.
 
-**Check:** Are evaluators maintained?
+**체크:** 평가기가 지속적으로 관리되고 있는가?
 
-Look for periodic re-validation of judges or refreshed evaluation datasets.
+평가 모델에 대한 주기적인 재검증이나 평가 데이터셋 최신의 상태 유지가 이루어지는지 확인하세요.
 
-**Finding if set-and-forget:** Evaluators degrade as the pipeline evolves. Re-validate judges against fresh human labels and update eval datasets to reflect current usage.
+**일회성 구축 후 방치 시 진단:** 파이프라인이 진화함에 따라 평가기 성능은 저하됩니다. 최신의 사람 라벨과 대조하여 평가 모델을 재검증하고, 현재 사용 환경을 반영하도록 평가 데이터셋을 업데이트하세요.
 
-## No Eval Infrastructure
+## 평가 인프라가 없는 경우
 
-If the user has no eval artifacts (no traces, no evaluators, no labeled data):
+사용자에게 평가 결과물(트레이스, 평가기, 라벨링 데이터 등)이 전혀 없는 경우:
 
-1. Start with `error-analysis` on a sample of real traces.
-2. If no production data exists, use `generate-synthetic-data` to create test inputs, run them through the pipeline, then apply `error-analysis` to the resulting traces.
-3. Do not recommend building evaluators, judges, or dashboards before completing error analysis.
+1. 실제 트레이스 샘플에 대해 `error-analysis`부터 시작하세요.
+2. 프로덕션 데이터가 없다면 `generate-synthetic-data`를 사용하여 테스트 입력을 만들고, 파이프라인을 실행한 뒤 결과 트레이스에 `error-analysis`를 적용하세요.
+3. 오류 분석을 완료하기 전에는 평가기, 평가 모델, 또는 대시보드 구축을 권장하지 마세요.
 
-## Report Format
+## 보고서 형식
 
-Present findings ordered by impact. For each:
+영향도 순으로 발견 사항을 제시하세요. 각 항목은 다음과 같은 형식을 따릅니다:
 
+```markdown
+### [문제 제목]
+**상태:** [문제 발생 / 정상 / 판단 불가]
+[발견된 구체적인 문제에 대한 1~2문장 설명]
+**해결 방법:** [스킬이나 문서를 참조한 구체적인 후속 조치]
 ```
-### [Problem Title]
-**Status:** [Problem exists / OK / Cannot determine]
-[1-2 sentence explanation of the specific problem found]
-**Fix:** [Concrete action, referencing a skill or article]
-```
 
-Group under the six diagnostic areas. Omit areas where no problems were found.
+6개의 진단 영역별로 그룹화하세요. 문제가 발견되지 않은 영역은 생략합니다.
 
-## Anti-Patterns
+## 안티 패턴
 
-- Running the audit as a checklist without inspecting actual artifacts.
-- Reporting generic advice disconnected from what was found in the user's pipeline.
-- Recommending evaluators before error analysis is complete.
-- Suggesting LLM judges for failures that code-based checks can handle.
-- Treating this audit as a one-time event. Re-audit after significant pipeline changes.
+- 실제 결과물을 조사하지 않고 체크리스트만 채우듯 감사를 진행함.
+- 사용자의 파이프라인에서 발견된 내용과 무관한 일반적인 조언만 나열함.
+- 오류 분석이 끝나기도 전에 평가기 구축을 권장함.
+- 코드 기반 체크로 해결 가능한 실패 사례에 LLM 평가를 제안함.
+- 감사를 일회성 이벤트로 취급함. 중대한 파이프라인 변경 후에는 다시 감사를 수행해야 합니다.

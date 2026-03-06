@@ -1,11 +1,12 @@
+> [!NOTE]
+> 이 프로젝트는 PHamel Husain의 [evals-skills](https://github.com/hamelsmu/evals-skills)를 포크하여 한국어로 번역한 저장소입니다.
+
 # AI 코딩 에이전트를 위한 평가 스킬 (Eval Skills)
 
 AI 코딩 에이전트가 LLM 평가(Evaluations)를 구축할 수 있도록 돕는 스킬 모음입니다.
 
 이 프로젝트는 PM(Product Manager)이 AI 제품의 품질을 체계적으로 관리하고 평가할 수 있도록 돕는 한국어 스킬들을 제공합니다. 50개 이상의 기업을 돕고 [AI Evals 코스](https://maven.com/parlance-labs/evals?promoCode=evals-info-url)에서 학생들을 가르치며 발견한 일반적인 실수들을 방지하도록 설계되었습니다. 평가가 처음이라면 기초 자료로 [참고자료.md](참고자료.md)를 참고하세요.
 
-> [!NOTE]
-> 이 프로젝트는 PHamel Husain의 [evals-skills](https://github.com/hamelsmu/evals-skills)를 포크하여 한국어로 번역한 저장소입니다.
 
 ## 평가가 처음이신가요? 여기서 시작하세요
 
